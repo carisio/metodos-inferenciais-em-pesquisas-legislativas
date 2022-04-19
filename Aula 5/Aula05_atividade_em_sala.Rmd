@@ -1,0 +1,127 @@
+---
+title: "Deputados Federais - 2014"
+author: "Leandro Carísio Fernandes"
+date: "24/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+options(digits = 2, OutDec = ",")
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark=".")
+})
+rm(list = ls())
+```
+
+## Introdução
+
+```{r, echo = FALSE}
+deputados <- read.csv2("Eleicoes2014.csv")
+
+total_atributos = ncol(deputados)
+total_deputados = nrow(deputados)
+```
+
+Este relatório apresenta um panorama da composição de deputados federais na Câmara dos Deputados em 2014.
+
+Os dados foram extraídos do [Repositório de Dados do TSE](https://www.tse.jus.br/eleicoes/estatisticas/repositorio-de-dados-eleitorais-1) e contém **`r total_atributos`** atributos de **`r total_deputados`** deputados.
+
+## Da idade dos deputados eleitos em 2014
+
+```{r, echo = TRUE}
+
+# Função para cálculo da moda extraído de
+# https://stackoverflow.com/questions/2547402/how-to-find-the-statistical-mode
+moda <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+idade_media = mean(deputados$Idade)
+idade_mediana = median(deputados$Idade)
+idade_moda = moda(deputados$Idade)
+desvio_padrao = sd(deputados$Idade)
+
+```
+
+A média de idade dos deputados é de `r format(idade_media, nsmall=2)` anos com desvio padrão de `r desvio_padrao` anos. A mediana e a moda da idade são bem próximas da média e valem, respectivamente, `r idade_mediana` e `r idade_moda` anos. A figura abaixo mostra como a idade dos deputados estão distribuídas:
+
+```{r, echo = TRUE}
+hist(deputados$Idade, breaks = 30, col='blue', xlab='Idade', ylab='Quantidade de deputados', main='Histograma da idade dos deputados')
+```
+
+Uma curiosidade é que a Constituição Federal define que a idade mínima para se eleger deputado federal é de 21 anos. Entretanto, em 2014 havia `r sum(deputados$Idade == 21)` deputado eleito com essa idade mínima e apenas `r sum(deputados$Idade == 22)` deputado eleito com 22 anos de idade.
+
+```{r, echo = TRUE}
+total_deputadas = sum(deputados$Sexo == 'FEMININO')
+total_deputados = sum(deputados$Sexo == 'MASCULINO')
+```
+
+Observa-se que a quantidade de deputadas ainda é muito menor que a de deputados. São **`r total_deputados`** deputados e apenas **`r total_deputadas` ** deputadas. Entretanto, cabe ressaltar que ambos os conjuntos apresentam média de idade semelhantes, conforme a tabela a seguir:
+
+```{r, echo=TRUE}
+media_idade_por_sexo = aggregate(deputados$Idade, list(deputados$Sexo), FUN=mean)
+names(media_idade_por_sexo) = c('Sexo', 'Idade')
+kable(media_idade_por_sexo)
+```
+
+## Quanto ao grau de instrução
+
+```{r, echo=TRUE}
+df_grau_instrucao = data.frame(table(deputados$Grau.de.instrucao))
+df_grau_instrucao = cbind(df_grau_instrucao, 100*df_grau_instrucao$Freq/sum(df_grau_instrucao$Freq))
+names(df_grau_instrucao) = c('Grau de instrução', 'Frequência', 'Porcentagem (%)')
+```
+
+Em relação ao grau de instrução, pode-se observar que a maior parte dos deputados (`r df_grau_instrucao['Porcentagem (%)'][df_grau_instrucao['Grau de instrução'] == 'SUPERIOR COMPLETO']`%) tem ensino superior completo:
+
+```{r, echo=TRUE}
+kable(df_grau_instrucao)
+```
+
+Podemos calcular também a receita média por grau de instrução e observar que não há uma relação clara entre a receita média por grau de instrução:
+
+```{r, echo=TRUE}
+receita_por_grau_de_escolaridade = aggregate(as.numeric(deputados$Receitas.em.2014), list(deputados$Grau.de.instrucao), FUN=mean)
+names(receita_por_grau_de_escolaridade) = c('Grau de instrução', 'Receita média')
+kable(receita_por_grau_de_escolaridade)
+```
+
+## Quantidade de votos nominais
+
+```{r, echo=TRUE}
+media_votos_nominais = floor(mean(deputados$Nominais))
+mediana_votos_nominais = median(deputados$Nominais)
+desvio_padrao_votos_nominais = sd(deputados$Nominais)
+maior_valor_voto_nominal = max(deputados$Nominais)
+```
+Pode-se verificar que a média dos votos nominais é de `r format(media_votos_nominais, scientific=FALSE)` votos e desvio padrão de `r format(desvio_padrao_votos_nominais, scientific=FALSE)` votos. A média é `r (media_votos_nominais/mediana_votos_nominais - 1)*100`% superior a mediana de votos, que é de `r mediana_votos_nominais` votos. Isso indica a existência de valores extremos no conjunto de dados e, de fato, o maior valor do conjunto de dados (`r maior_valor_voto_nominal`) é cerca de `r (maior_valor_voto_nominal/media_votos_nominais)` vezes o valor da média. Essa informação fica mais clara a partir da visualização do histograma do votos nominais recebidos pelos deputados, com alguns bins do histograma presentes acima de 1.000.000 de votos:
+
+
+```{r, echo = TRUE}
+hist(deputados$Nominais, breaks = 30, col='blue', xlab='Votos nominais', ylab='Quantidade de deputados', main='Histograma de votos nominais')
+```
+
+
+A média no país da quantidade de votos nominais recebidos traz pouca informação prática pois a votação para deputados federais é feita por unidade da Federação. Por isso, é mais interessante verificar a média por UF e dos valores mínimos e máximos recebidos por UF:
+
+```{r, echo=TRUE}
+media_votos_nominais_por_uf = aggregate(deputados$Nominais, list(deputados$UF), FUN=mean)
+minimo_votos_nominais_por_uf = aggregate(deputados$Nominais, list(deputados$UF), FUN=min)
+maximo_votos_nominais_por_uf = aggregate(deputados$Nominais, list(deputados$UF), FUN=max)
+votos_nominais_por_uf = cbind(media_votos_nominais_por_uf, minimo_votos_nominais_por_uf$x, maximo_votos_nominais_por_uf$x)
+names(votos_nominais_por_uf) = c('UF', 'Media', 'Menor individual', 'Maior individual')
+kable(votos_nominais_por_uf)
+
+```
+
+Na tabela acima a coluna "Menor individual" indica o menor número de votos individuais recebidos por algum deputado eleito na unidade da federal correspondente. Nessa coluna os valores mínimos e máximos correspondem aos estados de `r votos_nominais_por_uf[which.min(votos_nominais_por_uf$'Menor individual'),]$UF` e `r votos_nominais_por_uf[which.max(votos_nominais_por_uf$'Menor individual'),]$UF`. O resultado surpreende, pois o senso comum nos diz que o estado com o maior valor individual nessa coluna deveria ser um estado populoso (como SP ou RJ, por exemplo). Uma explicação possível para isso é que a massa de dados não está correta, pois faltam informações sobre a coluna "Nominal" em `r sum(is.na(deputados$Nominais[deputados$UF == 'PI']))` entradas para o estado de Piauí (ou seja, existem `r sum(is.na(deputados$Nominais[deputados$UF == 'PI']))` NA).
+
+
+## Conclusões
+
+A base de dados utilizada nesse exercício permite retirar algumas conclusões interessantes como a idade mínima e média dos deputados, a diferença no quantitativo de deputados e deputadas, a receita média recebida por deputado eleito etc.
+
+Apesar disso é importante ressaltar que a base não está completa, pois há informações não disponíveis (NA) para alguns atributos. Ou seja, para uma análise aprofundada seria necessário tratar esses casos, o que foge do escopo desse exercício.
