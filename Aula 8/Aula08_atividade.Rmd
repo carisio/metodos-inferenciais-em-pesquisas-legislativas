@@ -1,0 +1,220 @@
+---
+title: "Aula 08"
+author: "Leandro Carísio"
+date: "28/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Teorema Central do Limite e Intervalos de Confiança
+
+```{r, echo=FALSE}
+
+# Curva
+rm(list = ls(all = TRUE))
+
+# funcao para plotagem da normal
+normalplot <- function(media = 0, dp = 1, z1 = 0, z2 = NULL, verz = FALSE, cor = "skyblue"){
+
+  if(media == 0 & dp == 1){ 
+    eixo = "z"
+  } else eixo = "x"
+  
+  lim <- c(media-round(3.5*dp,2),media+round(3.5*dp,2))
+  x <- seq(lim[1], lim[2], by = 0.01)
+  
+  cn1 <- function(x) {dnorm(x,media,dp)} # curva normal
+  
+  y= cn1(x)
+  
+  plot(x, y, ylab="Densidade", xlab=eixo, type="l",lwd=2)
+  
+  # distribuicao
+  if(is.null(z2)){
+    xaux <- seq(lim[1], z1, by = 0.01)
+    polygon(c(min(xaux), xaux, max(xaux)), c(0, cn1(xaux),0), col=cor, border=cor)
+  } else {
+    if(z2 < z1){
+      z <- z2; z2 <- z1; z1 <- z
+    }
+    xaux <- seq(z1, z2, by = 0.01)
+    polygon(c(min(xaux), xaux, max(xaux)), c(0, cn1(xaux),0), col=cor, border=cor)
+  }
+
+  # reforca as curvas
+  lines(c(lim[1],lim[2]),c(0,0))
+  lines(x, cn1(x),lwd=2, type="l")
+  lines(c(media,media), c(0,cn1(media)), lty = 2)
+  lines(c(z1, z1),c(-1, cn1(z1)))
+
+  if(verz){
+    text(z1, 0.02, pos = 4, paste0(eixo, " = ", z1))  
+  } else text(z1, 0.02, pos = 4, eixo)
+
+  if(!is.null(z2)){
+    lines(c(z2, z2),c(-1, cn1(z2)))
+  
+    if(verz){
+      text(z2, 0.01, pos = 4, paste0(eixo, " = ", z2))  
+    } else text(z2, 0.01, pos = 4,eixo)
+  }
+}
+
+
+# plota normal
+z <- 0.4; media <- 0; dp <- 1
+normalplot(media, dp, z)
+
+
+# tabela de probabilidades
+ini <- 0
+fim <- 3.09
+
+z <- seq(ini,fim,0.01)
+p <- pnorm(z)
+m <- round(matrix(p, ncol=10, byrow=TRUE),4)
+z2 <- round(seq(ini,fim,0.1),1)
+col <- seq(0.0,0.09,0.01)
+
+df <- cbind(z2,m)
+colnames(df) <- c("z",col)
+
+knitr::kable(df, caption = "Curva Normal Padrao - Tabela de Probabilidades P(Z <= z)")
+```
+
+### 1) A partir das amostras a seguir, calcule os intervalos de confiança com nível de confiança igual a 80%, 90%, 95% e 99%.
+
+```{r}
+set.seed(76584)
+a1 <- rnorm(100, 20, 3)
+a2 <- rnorm(10000, 20, 3)
+
+
+media_a1 = mean(a1)
+erro_padrao_a1 = sd(a1)/sqrt(length(a1))
+media_a2 = mean(a2)
+erro_padrao_a2 = sd(a2)/sqrt(length(a2))
+
+# 80%
+# 80% significa entre 0.1 e 0.9. O número mais próximo de 0.9 é 0.8997 (z = 1.28)
+ic_80_a1 = media_a1 + c(-1.28, 1.28)*erro_padrao_a1
+ic_80_a2 = media_a2 + c(-1.28, 1.28)*erro_padrao_a2
+
+# 90%
+# 90% significa entre 0.05 e 0.95. O número mais próximo é 0.9495 (z = 1.64)
+ic_90_a1 = media_a1 + c(-1.64, 1.64)*erro_padrao_a1
+ic_90_a2 = media_a2 + c(-1.64, 1.64)*erro_padrao_a2
+
+# 95%
+# 95% significa entre 0.025 e 0.975. O número mais próximo é 0.9750	(z = 1.96)
+ic_95_a1 = media_a1 + c(-1.96, 1.96)*erro_padrao_a1
+ic_95_a2 = media_a2 + c(-1.96, 1.96)*erro_padrao_a2
+
+# 99%
+# 99% significa entre 0.005 e 0.995. O número mais próximo é 0.9949 (z = 2.57)
+ic_99_a1 = media_a1 + c(-2.57, 2.57)*erro_padrao_a1
+ic_99_a2 = media_a2 + c(-2.57, 2.57)*erro_padrao_a2
+
+
+```
+
+Para a1:
+
+- Intervalo de confiança de 80%: `r ic_80_a1` 
+- Intervalo de confiança de 90%: `r ic_90_a1` 
+- Intervalo de confiança de 95%: `r ic_95_a1` 
+- Intervalo de confiança de 99%: `r ic_99_a1` 
+
+
+Para a2:
+
+- Intervalo de confiança de 80%: `r ic_80_a2` 
+- Intervalo de confiança de 90%: `r ic_90_a2` 
+- Intervalo de confiança de 95%: `r ic_95_a2` 
+- Intervalo de confiança de 99%: `r ic_99_a2` 
+
+### 2) Suponha que você é um candidato a cargo eletivo e contratou quatro institutos de pesquisa para avaliar a intenção de voto do eleitor na sua candidatura. Você recebeu as seguintes informações:
+
+1. Pesquisa 1
+   a. média percentual e votos:35%
+   b. desvio padrão percentual: 6%
+   c. quantidade de entrevistados: 2000
+   d. nível de confiança: 95%
+   
+2. Pesquisa 2
+   a. média percentual e votos:35%
+   b. desvio padrão percentual: 4%
+   c. quantidade de entrevistados: 150
+   d. nível de confiança: 95%
+
+3. Pesquisa 3
+   a. média percentual e votos:36%
+   b. desvio padrão percentual: 4%
+   c. quantidade de entrevistados: 250
+   d. nível de confiança: 99%
+
+4. Pesquisa 4
+   a. média percentual e votos:36%
+   b. desvio padrão percentual: 7%
+   c. quantidade de entrevistados: 5000
+   d. nível de confiança: 99%
+
+
+Em qual pesquisa você confiaria mais?
+
+```{r}
+# Pesquisa 1
+ic_p1 = 0.35 + c(-1.96, 1.96)*0.06/sqrt(2000)
+
+# Pesquisa 2
+ic_p2 = 0.35 + c(-1.64, 1.64)*0.04/sqrt(150)
+
+# Pesquisa 3
+ic_p3 = 0.36 + c(-2.57, 2.57)*0.04/sqrt(250)
+
+# Pesquisa 4
+ic_p4 = 0.36 + c(-2.57, 2.57)*0.07/sqrt(5000)
+
+```
+
+Intervalos de confianças das pesquisas:
+
+- Pesquisa 1: `r ic_p1*100`
+- Pesquisa 2: `r ic_p2*100`
+- Pesquisa 3: `r ic_p3*100`
+- Pesquisa 4: `r ic_p4*100`
+
+O intervalo de confiança é praticamente o mesmo em todos os casos. Confiaria mais na pesquisa 4, que traz o mesmo intervalo com 99% de nível de confiança, tem intervalo ligeiramente menor que a pesquisa 3 e entrevistou mais pessoas.
+
+### 3) Simule três experimentos de lançamento de uma moeda, cujas quantidades respectivas de lançamentos são 30, 100, 1000, 5000. Calcule o valor esperado em cada caso.
+
+```{r}
+set.seed(76584)
+
+n = 30
+jogadas = rbinom(n, 1, 0.5)
+media_30 = mean(jogadas)
+
+n = 100
+jogadas = rbinom(n, 1, 0.5)
+media_100 = mean(jogadas)
+
+n = 1000
+jogadas = rbinom(n, 1, 0.5)
+media_1000 = mean(jogadas)
+
+n = 5000
+jogadas = rbinom(n, 1, 0.5)
+media_5000 = mean(jogadas)
+
+```
+
+Média amostral para cada caso:
+
+- n = 30: `r media_30`
+- n = 100: `r media_100`
+- n = 1000: `r media_1000`
+- n = 5000: `r media_5000`
