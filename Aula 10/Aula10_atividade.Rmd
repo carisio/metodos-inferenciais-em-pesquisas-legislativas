@@ -1,0 +1,150 @@
+---
+title: "Aula 10"
+author: "Prof. Leandro Carísio Fernandes"
+date: "12/05/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Método Científico
+
+### Elabore uma proposta de pesquisa, descrevendo as seguintes etapas:
+
+* Fenômeno observado
+
+Houve mudanças recentes na presidência da Petrobrás nesse ano de eleição.
+
+* Pergunta de pesquisa
+
+Em ano de eleição presidencial há mais trocas do presidente da Petrobrás?
+
+* Hipótese da pesquisa
+
+Em anos de eleição presidencial há mais trocas do presidente da Petrobrás do que em anos que não há eleição presidencial.
+
+* Experimento: método e levantamento de dados
+
+Levantar o histórico de mudança de presidente da Petrobrás ano a ano e verificar a quantidade de trocas de presidentes em anos eleitorais e anos não eleitorais. Comparar a distribuição desses dois grupos.
+
+
+## Teste de Hipótese para uma amostra
+
+### Verifique se as amostras a seguir pertencem à mesma população dos respectivos *status quo* (sq):
+
+1. Considere nível de confiança de 95% e teste bicaudal.
+
+```{r}
+# status quo
+sq <- 50
+
+# amostra
+set.seed(764939)
+a <- rnorm(30, 30, 20)
+
+# solucao
+ic = mean(a) + qnorm(c(0.025, 0.975)) * sd(a) / sqrt(length(a))
+
+```
+A amostra tem tamanho `r length(a)`, média `r mean(a)` e desvio padrão `r sd(a)`.
+
+O intervalo de confiança é [`r ic`] e **não abrange** o status quo.
+
+2. Considere níveis de confiança de 95% e 90%, e teste unilateral à esquerda.
+
+```{r}
+# status quo
+sq <- 50
+
+# amostra
+set.seed(764939)
+a <- rnorm(20, 60, 20)
+
+# solucao
+ic_90 = mean(a) + qnorm(0.1) * sd(a) / sqrt(length(a))
+ic_95 = mean(a) + qnorm(0.05) * sd(a) / sqrt(length(a))
+
+```
+
+O teste unilateral à esquerda com nível de confiança de **90%** indica que a média é maior `r ic_90`, o que **não abrange** abrange o status quo (50).
+
+Já o mesmo teste com nível de confiança de **95%** indica que a média é maior que `r ic_95`, o que **abrange** o status quo (50).
+
+
+3. Considere níveis de confiança de 95% e 90%, e teste unilateral à direita.
+
+```{r}
+# status quo
+sq <- 45
+
+# amostra
+set.seed(764939)
+a <- rnorm(100, 40, 110)
+
+# solucao
+ic_90 = mean(a) + qnorm(0.90) * sd(a) / sqrt(length(a))
+ic_95 = mean(a) + qnorm(0.95) * sd(a) / sqrt(length(a))
+
+```
+
+O teste unilateral à direita com nível de confiança de **90%** indica que a média é menor `r ic_90`, o que **não abrange** abrange o status quo (45).
+
+Já o mesmo teste com nível de confiança de **95%** indica que a média é menor que `r ic_95`, o que **abrange** o status quo (45).
+
+## Teste de Hipótese para duas amostras
+
+### Verifique se as amostras abaixo pertencem à mesma população
+
+1. Considere nível de confiança de 95% e teste bicaudal.
+
+```{r}
+# amostras
+set.seed(764939)
+a1 <- rnorm(25,19,2.5)
+a2 <- rnorm(30,22,2)
+
+# solucao
+ic_a1 = mean(a1) + qnorm(c(0.025, 0.975)) * sd(a1) / length(a1)
+ic_a2 = mean(a2) + qnorm(c(0.025, 0.975)) * sd(a2) / length(a2)
+
+```
+
+O intervalo de confiança para a1 é [`r ic_a1`] e a média de a1 é `r mean(a1)`.
+
+O intervalo de confiança para a2 é [`r ic_a2`] e a média de a2 é `r mean(a2)`.
+
+Note que o intervalo de confiança de a1 não abrange a média de a2 e vice-versa. Logo, com nível de confiança de 95%, podemos dizer que **ambas as amostras não vem da mesma distribuição**.
+
+2. Considere nível de confiança de 95% e testes bicaudal, unilateral à esquerda e unilateral à direita.
+
+```{r}
+# amostras
+set.seed(764939)
+a1 <- rnorm(30,21,2.7)
+a2 <- rnorm(80,22,5)
+
+# solucao
+# primeira parte, com nível de confiança de 95% e teste bicaudal
+ic_a1 = mean(a1) + qnorm(c(0.025, 0.975)) * sd(a1) / length(a1)
+ic_a2 = mean(a2) + qnorm(c(0.025, 0.975)) * sd(a2) / length(a2)
+
+# segunda parte, com nível de confiança de 95% e teste unicaudal
+max_a1 = mean(a1) + qnorm(0.9) * sd(a1) / length(a1)
+min_a2 = mean(a2) + qnorm(0.1) * sd(a2) / length(a2)
+```
+
+- Teste bicaudal:
+
+O intervalo de confiança para a1 é [`r ic_a1`] e a média de a1 é `r mean(a1)`.
+
+O intervalo de confiança para a2 é [`r ic_a2`] e a média de a2 é `r mean(a2)`.
+
+Note que o intervalo de confiança de a1 não abrange a média de a2 e vice-versa. Logo, com nível de confiança de 95%, podemos dizer que **ambas as amostras não vem da mesma distribuição**.
+
+- Teste unicaudal:
+
+As amostras a1 e a2 tem média, respectivamente, iguais a `r mean(a1)` e `r mean(a2)`. Note que a média de a2 é maior que a média de a1. Logo, procuramos o maior valor que esperaríamos de uma distribuição com as características de a1 e o menor valor que esperaríamos de uma distribuição com as características de a2 e comparamos pra saber se maior(a1) < menor(a2). Se isso for verdade, então não há sobreposição e as amostras foram tiradas de distribuições diferentes.
+
+O maior valor de a1 é `r max_a1` e o menor valor de a2 é `r min_a2`. Assim, pelo teste unicaudal, como o maior valor de a1 é menor que o menor valor de a2, podemos dizer que **ambas as amostras não vem da mesma distribuição**.
