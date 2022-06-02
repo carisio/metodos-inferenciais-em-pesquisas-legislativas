@@ -45,6 +45,10 @@ mean(a) + sd(a)/sqrt(length(a)) * c(qnorm(.025), qnorm(.075))
 
 ```
 
+No primeiro caso o status quo está dentro do intervalo de confiança. Então podemos dizer, com nível de confiança de 95%, que a amostra pertence a mesma população do status quo.
+
+Nos dois exemplos seguintes desse exercício isso não ocorre.
+
 2. Considere níveis de confiança de 95% e 90%, e teste unilateral à esquerda.
 
 ```{r}
@@ -75,6 +79,8 @@ dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .9, '<')
 
 ```
 
+Tanto para a primeira quanto para a segunda amostra podemos dizer, com nível de confiança de 95%, que a amostra pode ter vindo da mesma população do status quo. Se o nível de confiança fosse relaxado para 90%, concluiríamos o oposto.
+
 3. Considere níveis de confiança de 95% e 90%, e teste unilateral à direita.
 
 ```{r}
@@ -94,6 +100,9 @@ dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .9, '>')
 
 ```
 
+Podemos dizer, com nível de confiança de 95%, que a amostra pode ter vindo da mesma população do status quo. Se o nível de confiança fosse relaxado para 90%, concluiríamos o oposto.
+
+
 ## Teste de Hipótese para duas amostras
 
 ### Verifique se as amostras abaixo pertencem aa mesma populacao
@@ -110,6 +119,8 @@ a2 <- rnorm(30,22,2)
 dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '=')
 
 ```
+
+De acordo com o intervalo de confiança plotado podemos concluir, com nível de confiança de 95%, que trata-se de amostras de diferentes populações.
 
 2. Considere nível de confiança de 95% e testes bicaudal, unilateral à esquerda e unilateral à direita.
 

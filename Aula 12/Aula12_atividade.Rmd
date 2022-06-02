@@ -1,0 +1,225 @@
+---
+title: "Aula 12 - Teste t-Student"
+author: "Leandro Carísio Fernandes"
+date: "26/05/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Teste de Hipótese para uma amostra
+
+### Verifique se as amostras a seguir pertencem à mesma população dos respectivos *status quo* (sq). Utilize a função **qt()** para calcular os respectivos intervalos de confiança.
+
+1. Considere nível de confiança de 95% e teste bicaudal. 
+
+```{r}
+# status quo
+sq <- 50
+
+# amostra
+set.seed(764939)
+a <- rnorm(30, 30, 20)
+
+# preparacao
+mean(a)
+n = length(a)
+df = n - 1
+t_val = (mean(a)-sq)/(sd(a)/sqrt(n))
+t_val
+
+# solucao bicaudal
+# Verifica se o intervalo de confiança de 95% abarca o status quo:
+mean(a) + sd(a)/sqrt(n) * c(qt(.025, df), qt(0.975, df))
+# Valor p:
+1 - abs(pt(t_val, df) - pt(-t_val, df))
+# Faz o mesmo usando a função t.test
+t.test(a, mu=sq)
+
+# solucao lateral aa esquerda
+# Verifica se o intervalo de confiança de 95% abarca o status quo. Nesse caso o intervalo vai de -Inf até:
+mean(a) + sd(a)/sqrt(n) * qt(0.95, df)
+# Valor p:
+pt(t_val, df)
+# Faz o mesmo usando a função t.test
+t.test(a, mu=sq, alternative="less")
+
+# solucao lateral aa direita
+# Verifica se o intervalo de confiança de 95% abarca o status quo. Nesse caso o intervalo vai de __ até Inf:
+mean(a) + sd(a)/sqrt(n) * qt(0.05, df)
+# Valor p:
+1-pt(t_val, df)
+# Faz o mesmo usando a função t.test
+t.test(a, mu=sq, alternative="greater")
+
+```
+
+2. Considere níveis de confiança de 95% e 90%, e teste unilateral à esquerda.
+
+```{r}
+# status quo
+sq <- 50
+
+# amostra
+set.seed(764939)
+a <- rnorm(20, 60, 20)
+
+# preparacao
+mean(a)
+n = length(a)
+df = n - 1
+t_val = (mean(a)-sq)/(sd(a)/sqrt(n))
+t_val
+
+
+# solucao 95
+# Verifica se o intervalo de confiança de 95% abarca o status quo. Nesse caso o intervalo vai de -Inf até:
+mean(a) + sd(a)/sqrt(n) * qt(0.95, df)
+# Valor p:
+pt(t_val, df)
+# Faz o mesmo usando a função t.test
+t.test(a, mu=sq, alternative="less")
+
+
+# solucao 90
+# Verifica se o intervalo de confiança de 90% abarca o status quo. Nesse caso o intervalo vai de -Inf até:
+mean(a) + sd(a)/sqrt(n) * qt(0.90, df)
+# Valor p:
+pt(t_val, df)
+# Faz o mesmo usando a função t.test
+t.test(a, mu=sq, alternative="less", conf.level = 0.9)
+
+
+
+```
+
+3. Considere níveis de confiança de 95% e 90%, e teste unilateral à direita.
+
+```{r}
+# status quo
+sq <- 45
+
+# amostra
+set.seed(764939)
+a <- rnorm(100, 40, 110)
+
+# preparacao
+mean(a)
+n = length(a)
+df = n - 1
+t_val = (mean(a)-sq)/(sd(a)/sqrt(n))
+t_val
+
+
+# solucao 95
+# Verifica se o intervalo de confiança de 95% abarca o status quo. Nesse caso o intervalo vai de __ até Inf:
+mean(a) + sd(a)/sqrt(n) * qt(0.05, df)
+# Valor p:
+1-pt(t_val, df)
+# Faz o mesmo usando a função t.test
+t.test(a, mu=sq, alternative="greater")
+
+
+# solucao 90
+# Verifica se o intervalo de confiança de 95% abarca o status quo. Nesse caso o intervalo vai de __ até Inf:
+mean(a) + sd(a)/sqrt(n) * qt(0.1, df)
+# Valor p:
+1-pt(t_val, df)
+# Faz o mesmo usando a função t.test
+t.test(a, mu=sq, alternative="greater", conf.level = 0.9)
+
+
+```
+
+## Teste de Hipótese para duas amostras
+
+### Verifique se as amostras abaixo pertencem à mesma população. Utilize a função **t.test()** (domínio *t*). Em seguida, utilize a função **qt()** para confirmar o cálculo dos respectivos intervalos de confiança (domínio *x*).
+
+1. Considere nível de confiança de 95%, grupos pareados e testes à esquerda, à direita e bicaudal.
+
+```{r}
+# amostras
+set.seed(764939)
+a1 <- rnorm(30,19,2.5)
+a2 <- rnorm(30,22,2.4)
+
+# preparacao
+x = a1 - a2
+n = length(x)
+df = n-1
+t_val = (mean(x)-0)/(sd(x)/sqrt(n))
+t_val
+
+# solucao aa esquerda
+# Teste t:
+t.test(a1, a2, paired = TRUE, var.equal = TRUE, alternative="less")
+# Calcula o intervalo de confiança de 95% e verifica se cobre o "0":
+mean(x) + sd(x)/sqrt(n) * qt(0.95, df)
+# Calcula o valor de p:
+pt(t_val, df)
+
+# solucao aa direita
+# Teste t:
+t.test(a1, a2, paired = TRUE, var.equal = TRUE, alternative="greater")
+# Calcula o intervalo de confiança de 95% e verifica se cobre o "0":
+mean(x) + sd(x)/sqrt(n) * qt(0.05, df)
+# Calcula o valor de p:
+1-pt(t_val, df)
+
+
+# solucao bicaudal
+# Teste t:
+t.test(a1, a2, paired = TRUE, var.equal = TRUE)
+# Calcula o intervalo de confiança de 95% e verifica se cobre o "0":
+mean(x) + sd(x)/sqrt(n) * c(qt(.025, df), qt(0.975, df))
+# Calcula o valor de p:
+1 - abs(pt(t_val, df) - pt(-t_val, df))
+
+```
+
+2. Considere nível de confiança de 95% e testes bicaudal, unilateral à esquerda e unilateral à direita. Faça o teste considerando grupos independentes com variânicas iguais e variâncias diferentes.
+
+```{r}
+# amostras
+set.seed(764939)
+a1 <- rnorm(30,21,2.7)
+a2 <- rnorm(80,22,5)
+
+# preparacao
+
+
+# solucao - variancias iguais
+
+# preparacao - variancias iguais
+
+
+
+# bicaudal
+t.test(a1, a2, var.equal = TRUE)
+
+# aa esquerda
+t.test(a1, a2, var.equal = TRUE, alternative="less")
+
+# aa direita
+t.test(a1, a2, var.equal = TRUE, alternative="greater")
+
+
+
+# solucao - variancias diferentes
+# preparacao - variancias diferentes
+
+
+
+# bicaudal
+t.test(a1, a2)
+
+# aa esquerda
+t.test(a1, a2, alternative="less")
+
+# aa direita
+t.test(a1, a2, alternative="greater")
+
+```
+
