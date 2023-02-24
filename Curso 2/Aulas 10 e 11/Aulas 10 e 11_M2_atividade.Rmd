@@ -1,0 +1,120 @@
+---
+title: "Aulaa 10 e 11 - Regressão Logística, construção do modelo"
+date: "13/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Para a base de dados [Titanic](https://www.kaggle.com/datasets/brendan45774/test-file), escolha os preditores do modelo de regressão logística capaz de explicar a probabilidade de um passageiro ter sobrevivido ao acidente ocorrido com a embarcação.
+
+Utilize a Estatística do Desvio, o Critério de Informação de Akaike e o Critério de Informação Baiesiano para auxiliar na decisão de incluir ou não variáveis ao modelo.
+
+-----------------------------------------
+Vamos começar abrindo os dados e vendo o formato do arquivo:
+
+Observação: A página que o exercício aponta é para uma base de testes, e nessa base a sobrevivência ou não é 100% definida pelo gênero do passageiro (100% das mulheres sobrevivem e 100% dos homens não). Entretanto, encontrei a base de treino equivalente e vou usá-la aqui nesse exercício.
+
+```{r}
+df = read.csv('train.csv')
+head(df)
+summary(df)
+```
+
+As 12 variáveis significam:
+
+- PassengerId: ID único
+- Survived: Se o passageiro sobreviveu ao naufrágio. 1 (SIM) e 0 (NÃO)
+- PClass: Classe do passageiro. 1 (primeira classe), 2 (segunda classe), 3 (terceira classe)
+- Name: Nome
+- Sex: Gênero
+- Age: Idade
+- Sibsp: (siblings/spouses) número de irmãos e cônjuges embarcados
+- Parch: (parents/children) número de pais e filhos embarcados
+- Ticket: Número do ticket do passageiro
+- Fare: Tarifa paga
+- Cabin: Cabine
+- Embarked: Portão de embarque (C = Cherbourg; Q = Queenstown; S = Southampton)
+
+Tendo em vista esses dados, vamos considerar apenas os dados que indicam de alguma forma características de passageiros: class, sex, age, sibsp, parch, fare, embarked. Vamos começar selecionando apenas essas variáveis e tratando algumas dessas variáveis como factors:
+
+Observação: Apesar de age ser uma variável importante, há 177 registros sem essa informação (NA). Vamos desconsiderar age para fins desse exercício. Em outra situação eu tenderia a propor dois modelos, um para quando age está disponível e outro caso contrário.
+
+```{r}
+df = df[,c('Survived', 'Pclass', 'Sex', 'SibSp', 'Parch', 'Fare', 'Embarked')]
+df$Pclass = as.factor(df$Pclass)
+df$Sex = as.factor(df$Sex)
+df$Embarked = as.factor(df$Embarked)
+```
+
+Vamos inspecionar os dados agora de Survived versus essas classes para verificar algumas possíveis relações:
+
+```{r}
+boxplot(df$Survived ~ df$Sex)
+boxplot(df$Survived ~ df$Pclass)
+boxplot(df$Survived ~ df$Embarked)
+plot(df$Parch, df$Survived)
+plot(df$Fare, df$Survived)
+```
+
+Há uma relação aqui que existe dependência com as variáveis Sex e Pclass. Parece haver também com alguns extratos da variável Embarked.
+
+Mas vamos começar com um modelo com todas as variáveis e descartar aquelas cujos coeficientes são estatisticamente iguais a 0:
+
+```{r}
+modelo = glm( Survived ~ ., family = binomial, data=df)
+summary(modelo)
+```
+
+Removendo:
+
+
+```{r}
+modelo = glm( Survived ~ Pclass + Sex + SibSp, family = binomial, data=df)
+summary(modelo)
+```
+Vamos checar se o modelo proposto é igual ao modelo saturado. Podemos fazer isso checando se o comando abaixo é maior que 0.05 (modelos iguais com signficância de 5%):
+
+```{r}
+1-pchisq(modelo$deviance, modelo$df.residual)
+```
+
+Dado esse modelo, vamos simplificá-lo removendo, primeiramente, a variável SibSp e, depois removendo também Pclass:
+
+```{r}
+modelo2 = glm( Survived ~ Pclass + Sex, family = binomial, data=df)
+summary(modelo2)
+
+modelo3 = glm( Survived ~ Sex, family = binomial, data=df)
+summary(modelo3)
+```
+
+
+Note que a remoção de Pclass e SibSp aumentou o valor do AIC. Caso essas variáveis não tivessem acrescentado utilidade significativa ao modelo, o AIC teria provavelmente diminuído com sua remoção. O aumento do AIC significa que houve aumento considerável da soma dos erros quadráticos com a remoção dessas variáveis.
+
+Assim, como resolução para o exercício, o modelo foi definido assim:
+
+```{r}
+modelo = glm( Survived ~ Pclass + Sex + SibSp, family = binomial, data=df)
+summary(modelo)
+```
+
+Agora podemos testar com a base de testes (arquivo disponível no link do exercício):
+
+```{r}
+df2 = read.csv('tested.csv')
+df2$Pclass = as.factor(df2$Pclass)
+df2$Sex = as.factor(df2$Sex)
+
+predicao = as.integer(predict(modelo3, df2, type = "response") > 0.5)
+resposta = df2$Survived
+```
+
+Total de dados diferentes:
+
+```{r}
+sum(predicao-resposta)
+```

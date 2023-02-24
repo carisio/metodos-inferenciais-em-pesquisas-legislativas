@@ -1,0 +1,209 @@
+---
+title: "Aula 07"
+author: "Leandro Carísio Fernandes"
+date: "7/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Áreas sob a curva normal
+
+Utilize as funções **dnormal**, **dnormalp** e **pnorm** para resolver as questões a seguir.
+
+
+```{r, echo = FALSE}
+# Curva
+rm(list = ls(all = TRUE))
+
+source("Normal.R")
+source("NormalPadrao.R")
+
+# funcao para plotagem da normal
+normalplot <- function(media = 0, dp = 1, z1 = 0, z2 = NULL, verz = FALSE, cor = "skyblue"){
+
+  if(media == 0 & dp == 1){ 
+    eixo = "z"
+  } else eixo = "x"
+  
+  lim <- c(media-round(3.5*dp,2),media+round(3.5*dp,2))
+  x <- seq(lim[1], lim[2], by = 0.01)
+  
+  cn1 <- function(x) {dnorm(x,media,dp)} # curva normal
+  
+  y= cn1(x)
+  
+  plot(x, y, ylab="Densidade", xlab=eixo, type="l",lwd=2)
+  
+  # distribuicao
+  if(is.null(z2)){
+    xaux <- seq(lim[1], z1, by = 0.01)
+    polygon(c(min(xaux), xaux, max(xaux)), c(0, cn1(xaux),0), col=cor, border=cor)
+  } else {
+    if(z2 < z1){
+      z <- z2; z2 <- z1; z1 <- z
+    }
+    xaux <- seq(z1, z2, by = 0.01)
+    polygon(c(min(xaux), xaux, max(xaux)), c(0, cn1(xaux),0), col=cor, border=cor)
+  }
+
+  # reforca as curvas
+  lines(c(lim[1],lim[2]),c(0,0))
+  lines(x, cn1(x),lwd=2, type="l")
+  lines(c(media,media), c(0,cn1(media)), lty = 2)
+  lines(c(z1, z1),c(-1, cn1(z1)))
+
+  if(verz){
+    text(z1, 0.02, pos = 4, paste0(eixo, " = ", z1))  
+  } else text(z1, 0.02, pos = 4, eixo)
+
+  if(!is.null(z2)){
+    lines(c(z2, z2),c(-1, cn1(z2)))
+  
+    if(verz){
+      text(z2, 0.01, pos = 4, paste0(eixo, " = ", z2))  
+    } else text(z2, 0.01, pos = 4,eixo)
+  }
+}
+
+
+```
+
+## Questões
+
+### 1) Suponha que ***X*** é normal com média igual a **8** e desvio-padrão igual a **5**. Encontre **P(*X* <= 8,6)**.
+
+```{r, echo=FALSE}
+normalplot(8, 5, 8.6, verz = TRUE, cor = "#FF0000B2")
+```
+
+```{r}
+pnorm(8.6, 8, 5)
+dnormal(media=8, dp=5, x1=8.6, x2=NULL)
+dnormalp(media=8, dp=5, x1=8.6, x2=NULL)
+
+```
+
+### 2) Suponha que ***X*** é normal com média igual a **10** e desvio-padrão igual a **3**. Encontre **P(*X* > 8,6)**.
+
+```{r, echo=FALSE}
+normalplot(10, 3, 8.6, verz = TRUE, cor = "orange")
+```
+
+```{r}
+1-pnorm(8.6, 10, 3)
+dnormal(media=10, dp=3, x1=8.6, x2=NULL)
+dnormalp(media=10, dp=3, x1=8.6, x2=NULL)
+```
+
+
+### 3) Suponha que ***X*** é normal com média igual a **10** e desvio-padrão igual a **6**. Encontre **P(7,3 < *X* <= 12,4)**.
+
+```{r, echo=FALSE}
+normalplot(10, 6, 7.3, 12.4, verz = TRUE, cor = "green")
+```
+
+```{r}
+pnorm(12.4, 10, 6) - pnorm(7.3, 10, 6)
+
+dnormal(media=10, dp=6, x1=7.3, x2=12.4)
+dnormalp(media=10, dp=6, x1=7.3, x2=12.4)
+```
+
+### 4) Suponha que ***X*** é normal com média igual a **0** e desvio-padrão igual a **1**. Encontre **P(-1,96 < *X* <= 1,96)**.
+
+```{r, echo=FALSE}
+normalplot(0, 1, -1.96, 1.96, verz = TRUE, cor = "#BB5440B2")
+```
+
+```{r}
+pnorm(1.96) - pnorm(-1.96)
+
+dnormal(x1=-1.96, x2=1.96)
+dnormalp(x1=-1.96, x2=1.96)
+
+```
+
+### 5) Suponha que ***X*** é normal com média igual a **44.90** e desvio-padrão igual a **10.98**. Encontre **P(20 < *X* <= 40)**.
+
+```{r, echo=FALSE}
+normalplot(44.9, 10.98, 20, 40, verz = TRUE, cor = "#FF5440B2")
+```
+
+```{r}
+pnorm(40, 44.9, 10.98) - pnorm(20, 44.9, 10.98)
+dnormal(media=44.9, dp=10.98, x1=20, x2=40)
+dnormalp(media=44.9, dp=10.98, x1=20, x2=40)
+```
+
+
+### 6) Suponha que ***X*** é normal com média igual a **44.90** e desvio-padrão igual a **10.98**. Encontre **P(*X* > 60)**.
+
+```{r, echo=FALSE}
+normalplot(44.9, 10.98, 60, verz = TRUE, cor = "#CC544FCC")
+```
+
+```{r}
+1 - pnorm(60, 44.9, 10.98)
+
+dnormal(media=44.9, dp=10.98, x1=60, x2=NULL)
+dnormalp(media=44.9, dp=10.98, x1=60, x2=NULL)
+```
+
+
+### 7) Repita as questões 5 e 6 tomando por base o histograma a seguir:
+
+
+```{r, echo=FALSE}
+set.seed(76584)
+idade <- rnorm(29437,44.9,10.98)
+h <- hist(idade, breaks = 20, col = "orange")
+
+# você pode utilizar o objeto h e os atributos breaks e counts
+
+
+```
+
+```{r}
+sum(h$count[h$breaks >= 20 & h$breaks < 40]) / sum(h$count)
+
+sum(h$count[h$breaks >= 60], na.rm=TRUE) / sum(h$count)
+```
+
+### 8) O que pode ser dito sobre os resultados encontrados nas questões 5, 6 e 7?
+
+O resultado é próximo quando a maior parte dos dados é considerada (questão 5). Entretanto, próximo das caudas, a divergência entre os dados e a distribuição normal é maior.
+
+
+### 9) Suponha que ***X*** é normal com média igual a **500** e desvio-padrão igual a **40**. Encontre o valor aporximado de **P(*X* > 550)**.
+
+```{r, echo=FALSE, warning=FALSE}
+# histograma acumulado
+set.seed(6745389)
+X <- rnorm(10000, 500, 40)
+h <- hist(X,freq = TRUE,plot=FALSE)
+h.cum <- cumsum(h$counts/length(X))
+x <- h$breaks[-1]
+plot(x, h.cum, pch=16, main="Função de Distribuição Acumulada",
+     xlab="X", ylab="Probabilidade")
+lines(x, h.cum)
+
+```
+
+```{r}
+1 - pnorm(550, 500, 40)
+dnormal(media=500, dp=40, x1=550, x2=NULL)
+dnormalp(media=500, dp=40, x1=550, x2=NULL)
+```
+
+### 10) Usando a Função de Distribuição Acumulada da questão anterior encontre o valor aporximado de **P(450 < *X* <= 550)**.
+
+```{r}
+h.cum[h$mid == 550] - h.cum[h$mid == 450]
+pnorm(550, 500, 40) - pnorm(450, 500, 40)
+dnormal(media=500, dp=40, x1=450, x2=550)
+dnormalp(media=500, dp=40, x1=450, x2=550)
+```
+

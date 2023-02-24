@@ -1,0 +1,381 @@
+---
+title: "Aula 3 Regressão"
+date: "19/08/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+source("lmIC.R")
+```
+
+Para os exercícios a seguir: (1) efetue a regressão linear; (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2; (3) plote o gráfico de dispersão e a reta de regressão; (4) plote o histograma dos resíduos; (5) plote o gráfico dos resíduos em função do preditor; (6) plote o gráfico dos resíduos normalizados em função do preditor; (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição, e para fazer inferência sobre um valor qualquer escohido; e (9) comente os resultados de cada item.
+
+As bases de dados utilizadas nos exercícios estão disponíveis em [RDatasets](https://vincentarelbundock.github.io/Rdatasets/datasets.html).
+
+### Exercício 1
+
+Baixe a base de dados *CASchools*, leia o dicionário de dados, escolha duas variáveis e efetue os comandos de 1 a 9.
+
+Vamos ver a relação entre as variáveis computer e teachers, ambas representando, respectivamente, o número de computadores e o número de professores.
+
+```{r}
+df = read.csv('CASchools.csv')
+
+# (1) efetue a regressão linear;
+formula = computer ~ teachers
+x = df$teachers
+y = df$computer
+modelo = lm(formula, data = df)
+
+# (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2;
+summary(modelo)
+
+# (3) plote o gráfico de dispersão e a reta de regressão;
+plot(formula, data = df)
+abline(modelo)
+
+# (4) plote o histograma dos resíduos;
+hist(modelo$residuals, breaks=30)
+
+# (5) plote o gráfico dos resíduos em função do preditor;
+plot(x, modelo$residuals)
+
+# (6) plote o gráfico dos resíduos normalizados em função do preditor;
+plot(x, rstandard(modelo))
+
+# (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição,
+lmIC(x, y)
+
+# (8) e para fazer inferência sobre um valor qualquer escolhido;
+dfpred = data.frame(teachers=400)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# (9) comente os resultados de cada item.
+```
+
+O que é possível perceber é que a quantidade de professores de uma escola é (obviamente) um bom preditor para a quantidades de computadores que a escola tem. Apesar de simples e de ter um bom R2 (quase 90%), o gráfico de resíduos não é normal, indicando que há também outras variáveis que poderiam (e deveriam) ser usadas na definição do modelo.
+
+### Exercício 2
+
+Baixe a base de dados *CPS 1985*, leia o dicionário de dados, escolha duas variáveis e efetue os comandos de 1 a 9.
+
+Vamos ver a relação entre as variáveis education e wage, ambas representando, respectivamente, a quantidade de anos de escolaridade da pessoa e sua renda em dólares por hora.
+
+```{r}
+df = read.csv('CPS1985.csv')
+
+# (1) efetue a regressão linear;
+formula = wage ~ education
+x = df$education
+y = df$wage
+modelo = lm(formula, data = df)
+
+# (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2;
+summary(modelo)
+
+# (3) plote o gráfico de dispersão e a reta de regressão;
+plot(formula, data = df)
+abline(modelo)
+
+# (4) plote o histograma dos resíduos;
+hist(modelo$residuals, breaks=30)
+
+# (5) plote o gráfico dos resíduos em função do preditor;
+plot(x, modelo$residuals)
+
+# (6) plote o gráfico dos resíduos normalizados em função do preditor;
+plot(x, rstandard(modelo))
+
+# (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição,
+lmIC(x, y)
+
+# (8) e para fazer inferência sobre um valor qualquer escolhido;
+dfpred = data.frame(education=10)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# (9) comente os resultados de cada item.
+```
+
+Podemos notar que há alguma relação entre education e wage. Entretanto, é uma relação relativamente fraca e a variação dos resíduos aumenta consideravelmente com o aumento de education. Definitivamente não é o melhor preditor dessa base.
+
+### Exercício 3
+
+Baixe a base de dados *Fertility*, leia o dicionário de dados, escolha duas variáveis e efetue os comandos de 1 a 9.
+
+Essa base de dados possui praticamente apenas variáveis categórias. As únicas numéricas são age (idade da mãe no censo) e work (número de semanas que a mãe trabalhou em 1979). Por isso, mesmo que não tenha muito cabimento, para efeitos do exercício, vamos tentar relacionar as duas.
+
+```{r}
+df = read.csv('Fertility.csv')
+
+# (1) efetue a regressão linear;
+formula = age ~ work
+x = df$work
+y = df$age
+modelo = lm(formula, data = df)
+
+# (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2;
+summary(modelo)
+
+# (3) plote o gráfico de dispersão e a reta de regressão;
+plot(formula, data = df)
+abline(modelo)
+
+# (4) plote o histograma dos resíduos;
+hist(modelo$residuals, breaks=30)
+
+# (5) plote o gráfico dos resíduos em função do preditor;
+plot(x, modelo$residuals)
+
+# (6) plote o gráfico dos resíduos normalizados em função do preditor;
+plot(x, rstandard(modelo))
+
+# (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição,
+lmIC(x, y)
+
+# (8) e para fazer inferência sobre um valor qualquer escolhido;
+dfpred = data.frame(work=25)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# (9) comente os resultados de cada item.
+
+```
+
+Conforme esperado, vemos que não há relação alguma entre essas variáveis. Assim, considerando o ditado "garbage in, garbage out", criamos um modelo cuja ideia já não fazia sentido e o resultado, claro, foi todo lixo.
+
+### Exercício 4
+
+Baixe a base de dados *EquationCitations*, leia o dicionário de dados, escolha duas variáveis e efetue os comandos de 1 a 9.
+
+Essa base representa a análise de citações de artigos sobre biologia evolucionária publicados em 1998 em 3 revistas. Vamos usar duas variáveis. A primeira, equations, indica a quantidade de equações no artigo. A segunda, cites, a variável dependente, indica a quantidade de citações que o artigo recebeu. Essa é uma questão interessante pois indicará, no final, se existe alguma relação entre a quantidade de citações que um artigo recebe e a quantidade de equações usadas no texto.
+
+```{r}
+df = read.csv('EquationCitations.csv')
+
+# (1) efetue a regressão linear;
+formula = cites ~ equations
+x = df$equations
+y = df$cites
+modelo = lm(formula, data = df)
+
+# (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2;
+summary(modelo)
+
+# (3) plote o gráfico de dispersão e a reta de regressão;
+plot(formula, data = df)
+abline(modelo)
+
+# (4) plote o histograma dos resíduos;
+hist(modelo$residuals, breaks=30)
+
+# (5) plote o gráfico dos resíduos em função do preditor;
+plot(x, modelo$residuals)
+
+# (6) plote o gráfico dos resíduos normalizados em função do preditor;
+plot(x, rstandard(modelo))
+
+# (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição,
+lmIC(x, y)
+
+# (8) e para fazer inferência sobre um valor qualquer escolhido;
+dfpred = data.frame(equations=5)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# (9) comente os resultados de cada item.
+```
+
+A conclusão aqui é que o número de equações não é foi um bom preditor para a quantidade de citações que um artigo publicado em 1998 da área de biologia evolucionária recebeu.
+
+### Exercício 5
+
+Baixe a base de dados *OECDGas*, leia o dicionário de dados, escolha duas variáveis e efetue os comandos de 1 a 9.
+
+Trata-se de base de dados de consumo de gasolina em 18 países da OECD entre 1960 e 1978. Nesse exercício vamos a variável gas (logaritmo do consumo de gasolina por carro) como independente e, como dependente, o ano. Assim conseguimos ver se houve redução média no consumo por carro com o passar dos anos.
+
+```{r}
+df = read.csv('OECDGas.csv')
+
+# (1) efetue a regressão linear;
+formula = gas ~ year
+x = df$year
+y = df$gas
+modelo = lm(formula, data = df)
+
+# (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2;
+summary(modelo)
+
+# (3) plote o gráfico de dispersão e a reta de regressão;
+plot(formula, data = df)
+abline(modelo)
+
+# (4) plote o histograma dos resíduos;
+hist(modelo$residuals, breaks=30)
+
+# (5) plote o gráfico dos resíduos em função do preditor;
+plot(x, modelo$residuals)
+
+# (6) plote o gráfico dos resíduos normalizados em função do preditor;
+plot(x, rstandard(modelo))
+
+# (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição,
+lmIC(x, y)
+
+# (8) e para fazer inferência sobre um valor qualquer escolhido;
+dfpred = data.frame(year=1970)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# (9) comente os resultados de cada item.
+```
+
+Há uma tendência de diminuição na gasolina por carro com o passar dos anos (o coeficiente é negativo, estatisticamente diferente de 0 com nível de significância de 95%). Nota-se, porém, que o R2 é bem baixo, indicando que o ano, sozinho, explica pouca variação. De certa forma isso é esperado, pois cada país deve ter um comportamento diferente e, nesse exercício, combinamos todos eles na mesma base em vez de separar apenas um país.
+
+O gráfico dos resíduos também não mostra normalidade, e a suspeita aqui é, de novo, o fato de termos considerado todos os países simultaneamente. Poderíamos fazer o exercício novamente considerando também a variável categória country como entrada. Mas isso é tema para outra aula.
+
+
+### Exercício 6
+
+Baixe a base de dados *SwissLabor*, leia o dicionário de dados, escolha duas variáveis e efetue os comandos de 1 a 9.
+
+Trata-se de base sobre saúde na Suíça em 1981. Há 3 variáveis interessantes, education, youngkids e oldkids que representam a quantidade de anos de ensino formal, o total de filhos abaixo de 7 anos de idade e acima de 7 anos de idade. A partir dessas duas últimas podemos criar uma variável kids com a soma delas e usar essa variável como variável dependente de education para verificar se education pode ser uma preditora de kids.
+
+```{r}
+df = read.csv('SwissLabor.csv')
+
+# (1) efetue a regressão linear;
+df$kids = df$youngkids + df$oldkids
+formula = kids ~ education
+x = df$education
+y = df$kids
+modelo = lm(formula, data = df)
+
+# (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2;
+summary(modelo)
+
+# (3) plote o gráfico de dispersão e a reta de regressão;
+plot(formula, data = df)
+abline(modelo)
+
+# (4) plote o histograma dos resíduos;
+hist(modelo$residuals, breaks=30)
+
+# (5) plote o gráfico dos resíduos em função do preditor;
+plot(x, modelo$residuals)
+
+# (6) plote o gráfico dos resíduos normalizados em função do preditor;
+plot(x, rstandard(modelo))
+
+# (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição,
+lmIC(x, y)
+
+# (8) e para fazer inferência sobre um valor qualquer escolhido;
+dfpred = data.frame(education=10)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# (9) comente os resultados de cada item.
+```
+
+Para essa base a conclusão que temos é que não tem uma relação clara entre a quantidade de filhos e a quantidade de anos de educação formal que uma pessoa teve na Suíça naquele ano.
+
+### Exercício 7
+
+Baixe a base de dados *Salaries*, leia o dicionário de dados, escolha duas variáveis e efetue os comandos de 1 a 9.
+
+Essa base representa salários de professores em uma faculdade nos EUA, em 2008 (The 2008-09 nine-month academic salary for Assistant Professors, Associate Professors and Professors in a college in the U.S.). Há 3 variáveis numéricas: yrs.since.phd (anos desde o phd), yrs.service (anos de trabalho) e salary (salário). Vamos verificar se há relação entre o valor recebido e yrs.service.
+
+```{r}
+df = read.csv('Salaries.csv')
+
+# (1) efetue a regressão linear;
+formula = salary ~ yrs.service
+x = df$yrs.service
+y = df$salary
+modelo = lm(formula, data = df)
+
+# (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2;
+summary(modelo)
+
+# (3) plote o gráfico de dispersão e a reta de regressão;
+plot(formula, data = df)
+abline(modelo)
+
+# (4) plote o histograma dos resíduos;
+hist(modelo$residuals, breaks=30)
+
+# (5) plote o gráfico dos resíduos em função do preditor;
+plot(x, modelo$residuals)
+
+# (6) plote o gráfico dos resíduos normalizados em função do preditor;
+plot(x, rstandard(modelo))
+
+# (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição,
+lmIC(x, y)
+
+# (8) e para fazer inferência sobre um valor qualquer escolhido;
+dfpred = data.frame(yrs.service=30)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# (9) comente os resultados de cada item.
+```
+
+Os anos de serviços explicam cerca de 11% da variação dos dados. É uma explicação bem pobre. Analisando o gráfico de yrs.service vs salary, vemos que há uma linearidade até uns 15 anos, mas a partir daí os dados passam a ficar bem dispersos. O histograma dos resíduos sugere algum grau de normalidade próxido da média, mas a medida que se distancia da média os resíduos ficam bem diferentes do que seriam caso sua distribuição fosse normal. É um modelo ruim, que explica pouca coisa.
+
+### Efetue os comandos de 1 a 9 para outras três bases de dados de sua escolha.
+
+#### Base 1
+
+Por curiosidade, vamos analisar a base frets.csv, que mostra a relação do tamanho da cabeça do primeiro filho com a do segundo filho. Apenas para ver se o tamanho da cabeça do primeiro filho é um bom preditor para o tamanho da cabeça do segundo filho.
+
+```{r}
+df = read.csv('frets.csv')
+
+# (1) efetue a regressão linear;
+formula = l2 ~ l1
+x = df$l1
+y = df$l2
+modelo = lm(formula, data = df)
+
+# (2) utilize a função summary e encontre os coeficientes de regressão e o valor de R2;
+summary(modelo)
+
+# (3) plote o gráfico de dispersão e a reta de regressão;
+plot(formula, data = df)
+abline(modelo)
+
+# (4) plote o histograma dos resíduos;
+hist(modelo$residuals, breaks=30)
+
+# (5) plote o gráfico dos resíduos em função do preditor;
+plot(x, modelo$residuals)
+
+# (6) plote o gráfico dos resíduos normalizados em função do preditor;
+plot(x, rstandard(modelo))
+
+# (7) utilize a função *lmIC* para determinar a banda de confiança e a banda de predição,
+lmIC(x, y)
+
+# (8) e para fazer inferência sobre um valor qualquer escolhido;
+dfpred = data.frame(l1=185)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# (9) comente os resultados de cada item.
+
+```
+
+Os dados mostram que, em regra, o tamanho da cabeça do primeiro filho é um bom preditor para o tamanho da cabeça do segundo. É a genética agindo.
+
+#### Base 2
+```{r}
+```
+
+#### Base 3
+```{r}
+```

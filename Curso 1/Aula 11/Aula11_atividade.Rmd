@@ -1,0 +1,182 @@
+---
+title: "Aula 11"
+author: "Leandro Carísio Fernandes"
+date: "19/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("NormalCompara.R")
+```
+### Utiliza a função **dnormalComp()** para resolver os exercícios a seguir.
+
+## Teste de Hipótese para uma amostra
+
+### Verifique se as amostras a seguir pertencem à mesma população dos respectivos *status quo* (sq):
+
+1. Considere nível de confiança de 95% e teste bicaudal.
+
+```{r}
+# status quo
+sq <- 63
+# amostra
+set.seed(764939)
+a <- rnorm(10, 60, 20)
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .95, '=')
+
+
+# status quo
+sq <- 63
+# amostra
+set.seed(764939)
+a <- rnorm(60, 60, 20)
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .95, '=')
+
+
+
+# status quo
+sq <- 49.5
+# amostra
+set.seed(764939)
+a <- rnorm(8000, 50, 20)
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .95, '=')
+mean(a) + sd(a)/sqrt(length(a)) * c(qnorm(.025), qnorm(.075))
+
+```
+
+No primeiro caso o status quo está dentro do intervalo de confiança. Então podemos dizer, com nível de confiança de 95%, que a amostra pertence a mesma população do status quo.
+
+Nos dois exemplos seguintes desse exercício isso não ocorre.
+
+2. Considere níveis de confiança de 95% e 90%, e teste unilateral à esquerda.
+
+```{r}
+# status quo
+sq <- 599
+# amostra
+set.seed(884939)
+a <- rnorm(1500, 600, 20)
+
+# IC, 95% , <
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .95, '<')
+
+# IC, 90% , <
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .9, '<')
+
+
+# status quo
+sq <- 22
+# amostra
+set.seed(781849)
+a <- rnorm(1500, 22.5, 40)
+
+# IC, 95% , <
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .95, '<')
+
+# IC, 90% , <
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .9, '<')
+
+```
+
+Tanto para a primeira quanto para a segunda amostra podemos dizer, com nível de confiança de 95%, que a amostra pode ter vindo da mesma população do status quo. Se o nível de confiança fosse relaxado para 90%, concluiríamos o oposto.
+
+3. Considere níveis de confiança de 95% e 90%, e teste unilateral à direita.
+
+```{r}
+# status quo
+sq <- 599.5
+# amostra
+set.seed(764939)
+a <- rnorm(2000, 599, 30)
+
+# IC, 95% , <
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .95, '>')
+
+# IC, 90% , <
+dnormalComp(sq, NULL, mean(a), sd(a)/sqrt(length(a)), .9, '>')
+
+
+
+```
+
+Podemos dizer, com nível de confiança de 95%, que a amostra pode ter vindo da mesma população do status quo. Se o nível de confiança fosse relaxado para 90%, concluiríamos o oposto.
+
+
+## Teste de Hipótese para duas amostras
+
+### Verifique se as amostras abaixo pertencem aa mesma populacao
+
+1. Considere nível de confiança de 95% e teste bicaudal.
+
+```{r}
+# amostras
+set.seed(454939)
+a1 <- rnorm(25,19,2.5)
+a2 <- rnorm(30,22,2)
+
+# solucao
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '=')
+
+```
+
+De acordo com o intervalo de confiança plotado podemos concluir, com nível de confiança de 95%, que trata-se de amostras de diferentes populações.
+
+2. Considere nível de confiança de 95% e testes bicaudal, unilateral à esquerda e unilateral à direita.
+
+```{r}
+# amostras
+set.seed(76453)
+a1 <- rnorm(30,21,2.7)
+a2 <- rnorm(80,22,5)
+
+# solucao
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '=')
+
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '<')
+
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '>')
+
+
+
+
+# amostras
+set.seed(76000)
+a1 <- rnorm(30,1002,20.3)
+a2 <- rnorm(80,988,100)
+
+# solucao
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '=')
+
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '<')
+
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '>')
+
+
+```
+
+
+### Forca do Teste
+
+3. Efetue testes bicaudais com 95% de confiança e determine, para cada caso, a força do teste, alternando as amostras sujeitas ao efeito.
+
+```{r}
+# amostras
+set.seed(76453)
+a1 <- rnorm(30,21,2.7)
+a2 <- rnorm(80,22,5)
+
+# solucao
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '=', 1)
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '=', 2)
+
+# amostras
+set.seed(76000)
+a1 <- rnorm(30,1002,20.3)
+a2 <- rnorm(80,988,100)
+
+# solucao
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '=', 1)
+dnormalComp(mean(a1), sd(a1)/sqrt(length(a1)), mean(a2), sd(a2)/sqrt(length(a2)), .95, '=', 2)
+
+```

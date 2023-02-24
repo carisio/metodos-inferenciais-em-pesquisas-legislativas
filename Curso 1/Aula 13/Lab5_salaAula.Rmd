@@ -1,0 +1,82 @@
+---
+title: "Teste t"
+author: "Leandro Carísio Fernandes"
+date: "2 de junho de 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 10, fig.align = "center", fig.asp = 0.8)
+
+source("teste_t.R")
+```
+
+# Repita os exemplos do Lab 5, considerando as novas informações.
+
+## Considere nivel de confianca de 95% e teste bicaudal para os testes abaixo. 
+
+# Status Quo
+
+```{r}
+sq <- 30
+
+# amostra
+set.seed(764939)
+a <- rnorm(30, 30, 20)
+
+teste.t(a, mu=sq)
+```
+
+
+# Grupos Pareados
+
+```{r}
+set.seed(764939)
+x <- rnorm(10,2.35,1.80)
+y <- rnorm(10,3.93,2.40)
+
+
+teste.t(x, y, paired = TRUE, var.equal = TRUE)
+```
+
+# Grupos Independentes - variancias iguais
+
+```{r}
+set.seed(57840)
+a1 <- rnorm(25, 21.989, 1.1535)
+
+set.seed(57840)
+a2 <- rnorm(30, 20.91, 1.3465)
+
+
+# x menor que y eh o mesmo que ...
+# Aqui é a1 < a2
+teste.t(a1, a2, var.equal = TRUE, alternative="less")
+
+# y maior que x.
+# É o mesmo que a2 > a1
+teste.t(a2, a1, var.equal = TRUE, alternative="greater")
+
+```
+
+
+# Grupos Independentes - variancias diferentes
+
+```{r}
+set.seed(578501)
+a1 <- rnorm(23, 21.98, 1.168)
+
+set.seed(57840)
+a2 <- rnorm(32, 21.2627, 2.43025)
+
+
+
+# x menor que y eh o mesmo que ...
+# Aqui é a1 < a2
+teste.t(a1, a2, var.equal = FALSE, alternative="less")
+
+# y maior que x.
+# É o mesmo que a2 > a1
+teste.t(a2, a1, var.equal = FALSE, alternative="greater")
+
+```

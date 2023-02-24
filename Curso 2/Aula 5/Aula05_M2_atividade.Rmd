@@ -1,0 +1,273 @@
+---
+title: "Aula 5 - Regressão Múltiplpa"
+date: "01/09/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Para as bases de dados a seguir: (1) verifique as relações marginais entre as variáveis; (2) construa um modelo de regressão linear múltipla; (3) encontre os coeficientes de regressão e o valor de R2; (4) faça uma predição com bandas de confiança e de predição; (5) comente os resultado encontrados.
+
+Bases de dados disponíveis em [RDatasets](https://vincentarelbundock.github.io/Rdatasets/datasets.html).
+
+
+### 1 - *CASchools* - California Test Score Data.
+
+Inicialmente começamos lendo a base de dados:
+```{r}
+df = read.csv("CASchools.csv")
+```
+
+Em seguida, para o propósito desta aula, filtramos apenas as variáveis numéricas:
+```{r}
+# Filtra apenas as variáveis numéricas
+dftreino = df[,6:15]
+```
+
+Agora vamos exibir como cada par de variáveis varia. Com isso podemos ver alguma relação aparente entre as variáveis, o que ajuda a definir o modelo:
+```{r}
+# Verifica, 2 a 2, a relação entre cada variável da base de dados
+pairs(dftreino, panel=panel.smooth)
+```
+
+De acordo com o dicionário de dados, vamos tentar estimar o score em matemática (campo math) dos dados. Pelos dados, é bem óbvio que existe uma relação estreita entre a nota de matemática e a nota de leitura. Entretanto, para fins desse exercício, vamos desconsiderar a variável read (pelo resultado acima, é possível que um modelo com apenas essa informação já traria melhores resultados que qualquer outro modelo combinando todas as outras variáveis).
+
+Desconsiderando 'read', parece que há uma relação entre as variáveis (calworks, lunch, income, english) e math. Note que as três primeiras (calworks, lunch, income) estão relacionadas a renda e são corelacionadas. Dessa forma, escolhi apenas a variável "income" para representar questões relacionadas a renda. A última variável, english, representa o percentual de alunos que não são nativos (ou seja, o inglês é a segunda língua) e possui baixa corelação com a renda:
+
+```{r}
+#cov(dftreino$calworks, dftreino$income)/sd(dftreino$calworks)/sd(dftreino$income)
+cor(dftreino$calworks, dftreino$income)
+cor(dftreino$calworks, dftreino$lunch)
+cor(dftreino$lunch, dftreino$income)
+cor(dftreino$english, dftreino$income)
+```
+
+Assim, escolhida as variáveis, montamos um modelo simples que depende apenas de income e english:
+
+```{r}
+# Cria um modelo explicando a nota de matemática:
+modelo = lm(data = dftreino, formula = math ~ income + english)
+
+# Mostra coeficientes e R2
+summary(modelo)
+```
+
+Note que o modelo explica ~62% da variação dos dados. Podemos usar um predict para verificar qual é a nota de matemática esperada quando income e english são os valores médios da base de dados:
+
+```{r}
+# Predição com bandas de confiança e predição na média de income e english:
+dfpred = data.frame(income=mean(dftreino$income), english=mean(dftreino$english))
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# Pra checar se a predição bateu com a média de math (tem que bater):
+mean(dftreino$math)
+```
+
+
+### 2 - *CPS 1985* - Determinants of Wages Data (CPS 1985).
+
+Essa base de dados traz informações sobre a renda (US$/hr), estudo (anos), experiência potencial (calculada como age - education - 6) e idade (anos).
+
+Inicialmente vamos criar um modelo com todas as variáveis numéricas:
+
+```{r}
+# Lê a base de dados
+df = read.csv("CPS1985.csv")
+
+# Filtra apenas as variáveis numéricas
+dftreino = df[,2:5]
+
+# Verifica, 2 a 2, a relação entre cada variável da base de dados
+pairs(dftreino, panel=panel.smooth)
+
+# Cria um modelo com todas as variáveis numéricas
+modelo = lm(data = dftreino, formula = wage ~ .)
+
+# Mostra coeficientes e R2
+summary(modelo)
+```
+
+Note que pela definição de experience na base de dados, ela é uma combinação linear de outras duas variáveis (education e age).
+
+Obs.: Na verdade o conteúdo de (dftreino$age - dftreino$education - 6) - dftreino$experience deveria ser um vetor de 0s, mas existe um cálculo errado onde um dos índices é -4:
+
+```{r}
+(dftreino$age - dftreino$education - 6) - dftreino$experience
+```
+
+Enfim, como essa variável é uma combinação linear das outras duas, podemos retirá-la do modelo sem que isso impacte nos resultado:
+
+```{r}
+# Cria um modelo com todas as variáveis numéricas
+modelo = lm(data = dftreino, formula = wage ~ age + education)
+
+# Mostra coeficientes e R2
+summary(modelo)
+```
+
+Conforme observado, o modelo aqui é mais simples (depende de uma variável a menos) e, conforme esperado, explica os mesmos 20,2% de variabilidade.
+
+Com o modelo definido, podemos usar um predict para verificar qual é a renda esperada de acordo com os algum valor de education/age. Por exemplo, suas médias:
+
+```{r}
+# Predição com bandas de confiança e predição na média de education e age
+dfpred = data.frame(education=mean(dftreino$education), age=mean(dftreino$age))
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+# Pra checar se a predição bateu com a média de wage (tem que bater):
+mean(dftreino$wage)
+
+
+```
+
+
+### 3 - *PSID1976* - Labor Force Participation Data.
+
+Essa base de dados representa a dinâmica de renda familiar em 1975 e possui dados da renda da família (marido e esposa) e algumas informações do casal e dos pais do casal.
+
+Vamos verificar através de um modelo de regressão linear até que ponto conseguimos explicar a renda da esposa a partir das variáveis relacionadas a educação dos membros da família relacionada a ela, experiência e quantidade de filhos na família. Vamos selecionar então as seguintes variáveis:
+
+- wage: Renda da esposa em US$/hr em 1975 (variável dependente)
+- youngkids: Número de filhos abaixo de 6 anos
+- oldkids: Número de filhos entre 6 e 18 anos
+- heducation: Anos de estudo do marido
+- education: Anos de estudo da esposa
+- meducation: Anos de estudo da mãe da esposa
+- feducation: Anos de estudo do pai da esposa
+
+Inicialmente vamos verificar a relação entre essas variáveis:
+
+```{r}
+# Lê a base de dados
+df = read.csv("PSID1976.csv")
+
+# Filtra apenas as variáveis de interesse
+dftreino = df[, c('wage', 'youngkids', 'oldkids', 'heducation', 'education', 'meducation', 'feducation')]
+  
+# Verifica, 2 a 2, a relação entre cada variável da base de dados
+pairs(dftreino, panel=panel.smooth)
+```
+
+Para iniciar a análise, vamos criar um modelo com todas essas variáveis:
+
+```{r}
+# Cria um modelo com todas as variáveis numéricas
+modelo = lm(data = dftreino, formula = wage ~ .)
+
+# Mostra coeficientes e R2
+summary(modelo)
+```
+
+Com esse resultado, vamos tentar remover do modelo as informações de meducation, feducation e oldkids e verificar o resultado desse novo modelo:
+
+```{r}
+# Cria um modelo com todas as variáveis numéricas
+modelo = lm(data = dftreino, formula = wage ~ youngkids + heducation + education)
+
+# Mostra coeficientes e R2
+summary(modelo)
+```
+
+Não houve diminuição significativa do R2 e o R2 ajustado até aumentou, visto que tiramos variáveis desnecessárias. Pelo gráfico acima e os resultados do modelo, vale a tentativa de remover a variável heducation (anos de estudo do marido) visto que ela é bem correlacionado com education (anos de estudo da mulher):
+
+
+```{r}
+# Cria um modelo com todas as variáveis numéricas
+modelo = lm(data = dftreino, formula = wage ~ youngkids + education)
+
+# Mostra coeficientes e R2
+summary(modelo)
+```
+
+Assim, esse modelo simplificado explica pouco mais de 13% da variabilidade do salário da esposa.
+
+Com o modelo podemos calcular o valor esperado do salário para uma mulher sem filhos e com 15 anos de estudo:
+```{r}
+dfpred = data.frame(youngkids=0, education=15)
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+```
+
+### 4 - *texas* - Data on prison capacity expansion in Texas.
+
+O dicionário dessa base de dados diz que se refere a:
+
+```
+This data looks at the massive expansion in prison capacity in Texas that occurred in 1993 under Governor Ann Richards, and the effect of that expansion on the number of Black men in prison.
+```
+
+Vamos começar abrindo a base de dados, filtrando apenas as colunas numéricas, removendo as linhas com NAs e vendo a relação entre as variáveis e a matriz de correlação:
+
+```{r}
+# Lê a base de dados
+df = read.csv("texas.csv")
+
+# Filtra apenas as variáveis numéricas e a primeira coluna que contém o id da linha e a segunda coluna que, apesar de numérica, é categórica (statefip, tipo um código de cidade)
+colnumericas <- unlist(lapply(df, is.numeric)) 
+dftreino = df[, colnumericas]
+dftreino = dftreino[, -c(1, 2)]
+dftreino = na.omit(dftreino)
+
+# Verifica, 2 a 2, a relação entre cada variável da base de dados
+pairs(dftreino, panel=panel.smooth)
+
+# Matriz de correlação
+cor(dftreino, method = 'pearson')
+```
+
+Nesse ponto temos as seguintes variáveis:
+
+- year: ano
+- bmprison: número de negros presos
+- wmprison: número de brancos presos
+- alcohol: consumo de álcool per-capita
+- income: renda mediana
+- ur: taxa de desemprego
+- poverty: taxa de pobreza
+- black: percentual da população negra
+- perc1519: percentual da população cuja idade é entre 15 e 19
+- aidscapita: taxa de mortalidade por AIDS em 100,000
+
+Exceto pelas variáveis bmprison, wmprison e black, todas as outras possuem dados consolidados do total da localidade (não são separadas em grupo). Por isso, para fins desse exercício, vamos considerar todas as variáveis como preditoras para duas saídas, bmprison e wmprison.
+
+Note que a correlação entre bmprison e wmprison na matriz de correlação é bastante alta, de tal forma que uma seria uma boa variável preditora para a outra. Mas isso de certa forma já é esperado, visto que a própria descrição da base de dados trata desse assunto. Assim, é normal que bmprison e wmprison variem na mesma direção com o tempo (mesmo que com 'intensidades' diferentes). Por isso, apesar do foco da base ser o efeito da expansão da política no número de negros na prisão ("the effect of that expansion on the number of Black men in prison"), podemos usar todas as outras variáveis como preditoras tanto de bmprison quanto de wmprison para verificar qual o nível de variabilidade que elas explicam em cada caso.
+
+```{r}
+# Cria um modelo com todas as variáveis numéricas
+modelow = lm(data = dftreino, formula = wmprison ~ . -bmprison)
+
+# Mostra coeficientes e R2
+summary(modelow)
+
+# Cria um modelo com todas as variáveis numéricas
+modelob = lm(data = dftreino, formula = bmprison ~ . -wmprison)
+
+# Mostra coeficientes e R2
+summary(modelob)
+```
+
+Desse resultado é interessante observar que o mesmo conjunto de dados explica 30% da variação de prisões de um grupo enquanto explica apenas 10% do aumento de outro grupo.
+
+Deixando agora apenas as variáveis estatisticamente significativas (com nível de significância mínimo de 1%) de cada grupo:
+
+
+```{r}
+# Cria um modelo com todas as variáveis numéricas
+modelow = lm(data = dftreino, formula = wmprison ~ alcohol + income + poverty + perc1519)
+
+# Mostra coeficientes e R2
+summary(modelow)
+
+# Cria um modelo com todas as variáveis numéricas
+modelob = lm(data = dftreino, formula = bmprison ~ alcohol + income + black + perc1519)
+
+# Mostra coeficientes e R2
+summary(modelob)
+```
+
+O que chama a atenção é que a variável black é uma boa preditora para bmprison, mas não é para wmprison. Num cenário em que houvesse tratamento igualitário entre os grupos, ela deveria ser boa preditora para ambos os grupos, o que não ocorreu.

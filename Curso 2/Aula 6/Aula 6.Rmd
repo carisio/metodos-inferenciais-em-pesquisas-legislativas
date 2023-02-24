@@ -1,0 +1,197 @@
+---
+title: "Aula 6 - Variáveis Dummy"
+date: "08/09/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+```
+
+
+Para as bases de dados a seguir: (1) verifique as relações marginais entre as variáveis; (2) construa um modelo de regressão linear múltipla incluindo variáveis categóricas; (3) encontre os coeficientes de regressão; (4) analise o efeito de grupo; (5) faça uma predição com bandas de confiança e de predição; (6) comente os resultados encontrados.
+
+Bases de dados disponíveis em [RDatasets](https://vincentarelbundock.github.io/Rdatasets/datasets.html).
+
+
+### 1 - *CollegeDistance* - College Distance Data.
+
+Cria um modelo com apenas duas variáveis independentes, ethnicity e education, e uma dependente, score. Apenas essas duas variáveis já são suficientes para explicar 31% da variação do score. Todas as variáveis do modelo, sem nenhuma transformação, explicam 33% da base.
+
+No gráfico vemos os dados para cada ano de instrução e 3 linhas: amarelo (outros), verde (hispânico) e azul (afro-americano). A regressão mostra uma diferença de ~6.8 pontos no score da etnia outros em relação aos afro-americanos e ~2.2 da etnia hispânico em relação aos afro-americanos.
+
+```{r}
+df = read.csv("CollegeDistance.csv")
+df$gender = as.factor(df$gender)
+df$ethnicity = as.factor(df$ethnicity)
+df$fcollege = as.factor(df$fcollege)
+df$mcollege = as.factor(df$mcollege)
+df$home = as.factor(df$home)
+df$urban = as.factor(df$urban)
+df$income = as.factor(df$income)
+df$region = as.factor(df$region)
+df$X <- NULL
+
+# Define o modelo e mostra o sumário
+modelo = lm(data = df, formula = score ~ ethnicity + education)
+summary(modelo)
+
+idx_afam = df$ethnicity == 'afam'
+idx_hispanic = df$ethnicity == 'hispanic'
+idx_other = df$ethnicity == 'other'
+
+predicao = predict(modelo, df)
+pred_afam = predicao[idx_afam]
+pred_hispanic = predicao[idx_hispanic]
+pred_other = predicao[idx_other]
+
+plot(df$education, df$score, type='p')
+
+# Plota em azul os afro-americanos, em verde os hispânicos e em amarelo a categoria outros:
+points(df$education[idx_afam], pred_afam, pch=21, col='blue', type='l')
+points(df$education[idx_hispanic], pred_hispanic, pch=21, col='green', type='l')
+points(df$education[idx_other], pred_other, pch=21, col='yellow', type='l')
+
+# Predição com bandas de confiança e predição na média de income e english:
+dfpred = data.frame(education=15, ethnicity='hispanic')
+predict(modelo, dfpred, interval='confidence')
+predict(modelo, dfpred, interval='prediction')
+
+
+```
+
+
+### 2 - *Guns* - More Guns, Less Crime?.
+
+Para essa base, vamos primeiro filtrar apenas os dados dos estados que contém observações distintas na variável law. Essa variável indica se havia lei no ano da observação permitindo porte de arma de fogo. Isso é necessário pois cada estado pode ter características próprias e queremos analisar, dentro de cada estado, a relação entre crimes violentos e o porte ou não de arma.
+
+Assim, vamos considerar duas variáveis categórias: o estado e a variável law. Além dessas, vamos considerar também a renda percapita, income. 
+
+```{r}
+df = read.csv("Guns.csv")
+df$state = as.factor(df$state)
+df$law = as.factor(df$law)
+df$X = NULL
+
+# Filtra apenas os dados de estados em que há dados em que houve transição
+# na variável law (que indica se havia lei permitindo o porte de arma naquele ano)
+estados_yes = unique(df$state[df$law == 'yes'])
+estados_no = unique(df$state[df$law == 'no'])
+estados_transicao = intersect(estados_yes, estados_no)
+
+df_filtrado = df[df$state %in% estados_transicao, ]
+
+modelo = lm(data = df_filtrado, formula = violent ~ state + law + income)
+summary(modelo)
+
+```
+Nota-se do resultado do modelo que o porte de arma aparentemente reduz a taxa de crimes violentos em 6 crimes para cada 100.000 habitantes. Entretanto, para esse conjunto de dados, esse valor não é estatisticamente diferente de 0. Ou seja, considerando esses dados, não é possível ver nenhuma associação entre a taxa de crimes violentos e o porte ou não de armas.
+
+Podemos analisar também cada estado individualmente e verificar com os mesmos dados aqueles em que o impacto da variável law é diferente de 0:
+
+```{r}
+for (i in 1:length(estados_transicao)) {
+  estado = estados_transicao[i]
+  modelo = lm(data = df_filtrado[df_filtrado$state == estado,], formula = violent ~ income + law)
+  estimate = p_val = summary(modelo)[["coefficients"]]['lawyes', "Estimate"]
+  p_val = summary(modelo)[["coefficients"]]['lawyes', "Pr(>|t|)"]
+
+  if (p_val < 0.05) {
+    print(c(estado, round(estimate, digits=2), round(p_val, digits=3)))
+  }
+}
+```
+
+Analisando cada estado individualmente, a taxa de crimes violentos em 10 estados pode ter alguma relação com 'law', podendo diminuir a taxa de até 341 crimes por 100.000 habitantes (Texas) até a aumentar a taxa em 215 crimes por 100.000 habitantes (Flórida).
+
+Devido a essa discrepância, fica a dúvida em relação a possíveis outras variáveis ocultas não consideradas na base de dados.
+
+
+### 3 - * PhDPublications* - Doctoral Publications.
+
+Essa base de dados representa o número de publicações de alunos de doutorado em bioquímica. Possui as seguintes variáveis:
+
+- articles: Número de artigos publicados nos últimos 3 anos do programa
+- gender: auto-explicativo
+- married: indica se o estudante é casado
+- kids: quantidade de filhos que o estudante tem
+- prestige: prestígio do programa
+- mentor: número de artigos publicados pelo orientador do estudante
+
+Primeiro vamos dar uma olhada na base de dados:
+```{r}
+df = read.csv("PhDPublications.csv")
+
+df$gender = as.factor(df$gender)
+df$married = as.factor(df$married)
+df$gender = as.factor(df$gender)
+df$X = NULL
+
+pairs(df)
+
+```
+
+Primeiro, é interessante observar que a quantidade de artigos publicados varia muito, podendo chegar a 19 artigos publicados em 3 anos. Isso é uma coisa extramente difícil e pode indicar alguma particularidade bem específica desses casos (por exemplo, aluno dentro de um laboratório em que toda publicação sai com o nome de todos ou algum campo de pesquisa onde esse número seja normal).
+
+Vamos checar, para cada quantidade de publicações, quantos alunos publicaram aquela quantidade:
+
+```{r}
+table(df$articles)
+```
+
+Realmente parece que publicar 8 ou mais artigos é uma coisa bem excepcional. Assim, vou ater a análise apenas aqueles que publicaram entre 0 e 7 artigos. Filtrando a base e criando um modelo de regressão linear com todas as variáveis:
+
+
+```{r}
+df_filtrado = df[df$articles <= 7, ]
+
+modelo = lm(data = df_filtrado, formula = articles ~ . )
+summary(modelo)
+
+```
+O modelo com todas as variáveis explica apenas 8% da variação dos dados. Mesmo vários coeficientes serem estatisticamente diferentes de 0, considero que o modelo não tem significância prática, sendo isso é insuficiente pra explicar qualquer coisa e, por isso, acho que não vale a pena tentar usar essas variáveis para explicar o modelo.
+
+### 4 - *titanic* - 1912 Titanic passenger survival.
+
+Essa base de dados apresenta informações sobre sobreviventes do Titanic. O ideal aqui seria outro tipo de regressão (logit), mas para usar a função lm vamos fazer algumas considerações.
+
+Inicialmente, vamos desconsiderar todos os registros com NA e converter a variável df$survived (yes/no) para numérica, com 1 indicando sim e 0 indicando não.
+
+
+
+```{r}
+df = read.csv("TitanicSurvival.csv")
+df$survived = as.factor(df$survived)
+df$sex = as.factor(df$sex)
+df$passengerClass = as.factor(df$passengerClass)
+df$X = NULL
+
+df = na.omit(df)
+df$survived = 1 * (df$survived == 'yes')
+
+table(df$survived)
+```
+
+Com isso vemos que 427 passageiros desses registros sobreviveram, o equivalente a 40.8% da base.
+
+Vamos fazer um modelo colocando survived como variável depedente e todas as outras como independentes:
+
+```{r}
+# Define o modelo e mostra o sumário
+modelo = lm(data = df, formula = survived ~ .)
+summary(modelo)
+```
+
+Aqui não faz sentido um número diferente de 0 e 1 para o valor de uma previsão.
+Para testar com os dados de treinamento, vamos fazer uma predição nos dados usados para gerar o modelo. Como separamos em duas classes (0 e 1), vamos truncar os resultados abaixo de 0.5 como 0 e acima de 0.5 como 1. Em seguida, converter para factors yes/no e plotar a matriz de confusão.
+
+```{r}
+predicao = as.numeric(predict(modelo, data=df) > 0.5)
+
+table(predicao)
+
+df$survived = as.factor(ifelse(df$survived == 1, 'yes', 'no'))
+predicao = as.factor(ifelse(predicao == 1, 'yes', 'no'))
+confusionMatrix(df$survived, predicao)
+```

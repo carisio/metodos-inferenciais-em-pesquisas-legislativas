@@ -1,0 +1,55 @@
+---
+title: "Aula 12 - Análise de Variância"
+date: "3/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Para a base de dados **salario.csv**, verifique se exise diferença entre as médias salariais dos grupos: (1) efetue a ANOVA; (2) plote os diagramas de caixa (boxplot); (3) efetue testes *post hoc*; (4) efetue a regressão linear com variáveis *dummy*; (5) comente os resultados encontrados.
+
+Primeiro vamos ler a base de dados:
+
+```{r}
+df = read.csv2('salario.csv', dec = ',')
+df$grupo = as.factor(df$grupo)
+```
+
+(1) efetue a ANOVA:
+
+```{r}
+summary(aov(salario ~ grupo, df))
+```
+
+(2) plote os diagramas de caixa:
+
+```{r}
+boxplot(salario ~ grupo, df)
+```
+
+(3) efetue testes *post hoc*:
+
+```{r}
+pairwise.t.test(df$salario, df$grupo, paired = FALSE, p.adjust.method = "bonferroni")
+```
+
+(4) efetue a regressão linear com variáveis dummy:
+
+```{r}
+summary(lm(salario ~ grupo, df))
+```
+
+(5) comente os resultados encontrados:
+
+Em todas essas alternativas o que estamos fazendo é checando se as médias dos grupos são diferentes.
+
+O boxplot (item 2) faz isso visualmente, dividindo a dispersão dos salários em cada grupo. Visualmente podemos observar que os grupos 3 e 4 possuem dispersões e médias parecidas.
+
+Na regressão (item 4), relacionamos o valor do salário de acordo com o grupo. Nesse exemplo, como o nível base é o grupo g1, podemos ver que a média é de 4994 (valor do intercepto) e que as médias dos outros grupos é o intercepto adicionado com o valor do coeficiente do grupo específico. O que vimos no boxplot (grupos 3 e 4 parecidos) podemos ver aqui também ao observar que o valor dos coeficientes dos grupos 3 e 4 é próximo (diferença de 50 unidades onde as observações médias são da ordem de 5000 unidades).
+
+No ANOVA (item 1), é feita uma comparação da variação total do grupo com todos os dados e da variação em cada grupo. O resultado do ANOVA é que ou todas as médias são iguais ou pelo menos uma das médias dos grupos é diferente. Nesse caso, vimos no resultado que pelo menos uma das médias do 4 grupos são diferentes.
+
+Nos testes post hoc é feita uma comparação grupo a grupo. No exemplo acima (item 3), podemos observar que há diferenças entre as médias dos grupos g1 e g2, g1 e g3, g1 e g4, g2 e g3, g2 e g4. Entretanto não há diferença entre as médias dos grupos g3 e g4.

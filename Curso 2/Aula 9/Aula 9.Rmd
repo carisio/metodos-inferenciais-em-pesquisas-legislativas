@@ -1,0 +1,206 @@
+---
+title: "Aula 9 - Regressão Logística"
+date: "29/09/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(caret)
+```
+
+
+Para as bases de dados a seguir: (1) efetue uma regressão logística; (2) estime a probabilidade de sucesso para dois ou mais eventos; (3) plote a função sigmoide; (4) comente os resultados encontrados.
+
+Bases de dados disponíveis em [RDatasets](https://vincentarelbundock.github.io/Rdatasets/datasets.html).
+
+
+### 1 - *CollegeDistance* - College Distance Data.
+
+```{r}
+df <- read.csv("CollegeDistance.csv")
+df$X = NULL
+df$income = as.factor(df$income)
+df$gender = as.factor(df$gender)
+df$urban = as.factor(df$urban)
+df$home = as.factor(df$home)
+df$region = as.factor(df$region)
+
+df$income_high = ifelse(df$income == 'high', 1, 0)
+
+# A regressão:
+
+fit = glm(income_high ~ score + fcollege + mcollege + home + education + urban + distance, data = df, family = binomial(link='logit'))
+
+summary(fit)
+
+# Plotar a sigmóide usando os dados usados para geração do modelo
+
+# Primeiro faz o cálculo de beta0 + beta1*x1 + beta2*x2 ...
+mi_x = predict(fit, df)
+# Agora aplica a sigmóide nesses valores:
+# Isso é equivalente a fazer o predict(fit, df, type='response')
+g_mi_x = 1/(1 + exp(-1*mi_x))
+
+# Plota mi(x) versus g(mi(x)) e pinta a sigmóide de verde e vermelho de acordo com o resultado esperado
+plot(mi_x, g_mi_x, ylim=c(0,1), col=ifelse(df$income_high == 1, 'green', 'red'))
+
+# Apresenta os pontos usados em treinamento em 0 (low) e 1 (high) e pinta de acordo com o valor predito
+points(mi_x, df$income_high, col=ifelse(g_mi_x > 0.5, 'green', 'red'))
+
+# Traça uma linha indicativa em x = 0 e y = 0.5
+abline(h=0.5, col='black', lty=3)
+abline(v=0, col='black', lty=3)
+
+predicao = as.factor(ifelse(g_mi_x > 0.5, 'high', 'low'))
+confusionMatrix(predicao, df$income)
+```
+Comentários:
+
+Fiz uma regressão logit de acordo com o seguinte modelo:
+
+income_high ~ score + fcollege + mcollege + home + education + urban + distance
+
+Há 4739 observações nessa base de treinamento, sendo 1365 indicando renda alta e indicando 3374 baixa renda.
+
+A matriz de confusão do treinamento mostrou que:
+
+- dos 1365 dados indicando renda alta, o modelo identificou corretamente apenas 518 deles. Os outros 847 foram identificados como baixa renda
+
+- dos 3374 dados indicando baixa renda, o modelo identificou corretamente 3108 deles. Os outros 266 foram identificados como alta renda.
+
+O que podemos concluir aqui é que há bem mais dados indicando baixa renda, e assim o modelo acabou reduzindo o erro na estimação dessa classe em relação à outra. De forma geral, 3626 observações da base foram identificadas corretamente (3626/4739 = 0,7651), indicando acurácia de 76,51%.
+
+Isso fica mais claro vendo o desenho da sigmóide no gráfico acima. Na curva da sigmóide os dados foram coloridos indicando se a observação de income relativa a u(x) é alta (verde) ou baixa (vermelha). Além disso, os mesmos dados foram mostrados em 1 (alta) e 0 (baixa) e, nessa escala, coloridos de acordo com a forma como foram classificados (ou seja, os dados classificados errados são aqueles que estão em vermelho em y = 1 ou em verde em y = 0).
+
+### 2 - *pancreatic*
+
+```{r}
+df <- read.csv("pancreatic.csv")
+df$X = NULL
+df$stage = as.factor(df$stage)
+df$onstudy = as.Date(df$onstudy, "%m/%d/%Y")
+df$progression = as.Date(df$progression, "%m/%d/%Y")
+df$death = as.Date(df$death, "%m/%d/%Y")
+df$dias_ate_morte = as.integer(df$death - df$onstudy)
+df$local = ifelse(df$stage == 'LA', 1, 0)
+
+fit = glm(local ~ dias_ate_morte, data = df, family = binomial(link='logit'))
+
+summary(fit)
+
+# Plotar a sigmóide usando os dados usados para geração do modelo
+
+# Primeiro faz o cálculo de beta0 + beta1*x1 + beta2*x2 ...
+mi_x = predict(fit, df)
+# Agora aplica a sigmóide nesses valores:
+# Isso é equivalente a fazer o predict(fit, df, type='response')
+g_mi_x = 1/(1 + exp(-1*mi_x))
+
+# Plota mi(x) versus g(mi(x)) e pinta a sigmóide de verde e vermelho de acordo com o resultado esperado
+plot(mi_x, g_mi_x, ylim=c(0,1), col=ifelse(df$local == 1, 'green', 'red'))
+
+# Apresenta os pontos usados em treinamento em 0 (low) e 1 (high) e pinta de acordo com o valor predito
+points(mi_x, df$local, col=ifelse(g_mi_x > 0.5, 'green', 'red'))
+
+# Traça uma linha indicativa em x = 0 e y = 0.5
+abline(h=0.5, col='black', lty=3)
+abline(v=0, col='black', lty=3)
+
+predicao = as.factor(ifelse(g_mi_x > 0.5, 'LA', 'M'))
+confusionMatrix(predicao, df$stage)
+```
+
+De acordo com o dicionário, essa base de dados contém 41 observações dessas variáveis:
+
+- stage: a factor with levels LA (locally advanced) or M (metastatic)
+
+- onstudy: date of enrollment into the clinical trial, in month/day/year format
+
+- progression: date of progression, in month/day/year format
+
+- death: date of death, in month/day/year format
+
+Não entendi direito o que significa as variáveis, especialmente a variável "progression". Então para fazer um teste, eu criei uma nova coluna com a diferença entre as variáveis death e onstudy. Chamei essa variável de df$dias_ate_morte e ela contém quantos dias levou até a morte do paciente contados a partir de quando a pessoa entrou no estudo.
+
+Considerando que queremos aplicar a logit, vamos ver se há alguma forma de, usando essa única informação de dias_ate_morte, prever se o estágio era LA (local) ou M (metastático). Essa informação realmente não serve pra nada e é apenas uma curiosidade de exercício aqui.
+
+O resultado que ocorreu é que o modelo treinado simplesmente preveu todo mundo como metastático. É um modelo que não tem utilidade.
+
+### 3 - * PhDPublications* - Doctoral Publications.
+
+```{r}
+df <- read.csv("PhDPublications.csv")
+df$X = NULL
+df$gender = as.factor(df$gender)
+df$married = as.factor(df$married)
+
+df$gender_male = ifelse(df$gender == 'male', 1, 0)
+
+fit = glm(gender_male ~ articles + married + kids + prestige + mentor, data = df, family = binomial(link='logit'))
+summary(fit)
+
+# Primeiro faz o cálculo de beta0 + beta1*x1 + beta2*x2 ...
+mi_x = predict(fit, df)
+# Agora aplica a sigmóide nesses valores:
+# Isso é equivalente a fazer o predict(fit, df, type='response')
+g_mi_x = 1/(1 + exp(-1*mi_x))
+
+# Plota mi(x) versus g(mi(x)) e pinta a sigmóide de verde e vermelho de acordo com o resultado esperado
+plot(mi_x, g_mi_x, ylim=c(0,1), col=ifelse(df$gender_male == 1, 'green', 'red'))
+
+# Apresenta os pontos usados em treinamento em 0 (low) e 1 (high) e pinta de acordo com o valor predito
+points(mi_x, df$gender_male, col=ifelse(g_mi_x > 0.5, 'green', 'red'))
+
+# Traça uma linha indicativa em x = 0 e y = 0.5
+abline(h=0.5, col='black', lty=3)
+abline(v=0, col='black', lty=3)
+
+predicao = as.factor(ifelse(g_mi_x > 0.5, 'male', 'female'))
+confusionMatrix(predicao, df$gender)
+```
+
+Nesse exemplo foi feito um modelo tentando identificar o gênero (masculino ou feminino) de acordo com todas as outras variáveis (articles, married, kids, prestige e mentor).
+
+O gráfico da sigmóide tem a mesma interpretação do exemplo 1. Ocorre que o modelo aqui tem precisão de apenas 64%. Apesar de ser um número baixo, é cerca de 10 pontos percentuais a mais do que a quantidade de gênero male na base (54%).
+
+### 4 - Escolha uma base de dados e efetue os comandos do exercício.
+
+```{r}
+df <- read.csv("tips.csv")
+df$X = NULL
+df$day = as.factor(df$day)
+df$tip_percentual = df$tip/df$bill
+
+df$sexta = ifelse(df$day == 'Friday', 1, 0)
+
+
+fit = glm(sexta ~ tip_percentual, data = df, family = binomial(link='logit'))
+summary(fit)
+
+# Primeiro faz o cálculo de beta0 + beta1*x1 + beta2*x2 ...
+mi_x = predict(fit, df)
+# Agora aplica a sigmóide nesses valores:
+# Isso é equivalente a fazer o predict(fit, df, type='response')
+g_mi_x = 1/(1 + exp(-1*mi_x))
+
+# Plota mi(x) versus g(mi(x)) e pinta a sigmóide de verde e vermelho de acordo com o resultado esperado
+plot(mi_x, g_mi_x, ylim=c(0,1), col=ifelse(df$sexta == 1, 'green', 'red'))
+
+# Apresenta os pontos usados em treinamento em 0 (low) e 1 (high) e pinta de acordo com o valor predito
+points(mi_x, df$sexta, col=ifelse(g_mi_x > 0.5, 'green', 'red'))
+
+# Traça uma linha indicativa em x = 0 e y = 0.5
+abline(h=0.5, col='black', lty=3)
+abline(v=0, col='black', lty=3)
+
+predicao = as.factor(ifelse(g_mi_x > 0.5, 'Friday', 'Tuesday'))
+confusionMatrix(predicao, df$day)
+```
+
+
+Escolhi a base de dados tips que relaciona o valor de uma gorjeta/conta com o dia da semana (terça ou sexta) relacionada a conta. A ideia é apenas checar se há alguma diferença significativa no valor da gorjeta dada nas terças ou nas sextas.
+
+O modelo escolhido foi sexta ~ tip_percentual. O resultado do modelo foi uma acurácia de 57,9%. Esse valor é ligeiramente superior a 55,8% (a quantiade de sexta feira na base). Ou seja, nessa base de dados o percentual de gorjeta sozinho não é um bom preditor para dizer se a conta foi feita na terça ou na sexta.
+

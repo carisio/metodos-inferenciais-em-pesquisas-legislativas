@@ -1,0 +1,116 @@
+---
+title: "Aula 3 Regressão"
+date: "18/08/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Para os exercícios a seguir: (1) efetue a regressão linear; (2) encontre os coeficientes de regressão; (3) plote o gráfico de dispersão e a reta de regressão; (4) desenvolva os itens solicitados.
+
+
+## Exercício 1
+
+O conjunto de dados **cars**, do pacote **datasets**, registra a distância (dist) percorrida até a parada total de um determinado carro e a velocidade (speed), em milhas por hora, na qual o freio foi pressionado. 
+
+1. Estime o valor esperado da distância de frenagem para as velocidades de 5, 10, 14, 23 e 30 mph.
+2. Encontre o intercepto quando a velocidade é deslocada do seu valor médio.
+3. Encontre a inclinação quando a unidade da velocidade é quilômetros por hora (1 mph = 1,61 km/h).
+
+```{r cars}
+# regressão linear
+regressao = lm(cars$dist ~ cars$speed)
+
+# coeficientes de regressão
+regressao$coefficients
+
+# gráfico de dispersão e reta de regressão
+plot(cars$speed, cars$dist)
+abline(regressao)
+
+# questões
+beta0 = regressao$coefficients['(Intercept)']
+beta1 = regressao$coefficients['cars$speed']
+# para a velocidade de 5, 10, 14, 23 e 30 
+beta0 + c(5, 10, 14, 23, 30)*beta1
+
+# intercepto - speed valor médio
+beta0 + beta1*mean(cars$speed)
+
+# inclinação
+beta1/1.61
+
+
+
+
+```
+
+## Exercício 2
+
+O conjunto de dados airquality, do pacote datasets, registra leituras diárias da qualidade do ar em Nova York no ano de 1973. Desconsidere os registros em que não há valor observado (NA) e desenvolva os seguintes itens:
+
+1. Verifique, por meio da regressão linear, a variação da concentração de Ozônio em função da radiação solar.
+2. Estime a concentração de Ozônio esperada para os seguintes níveis de radiação (lang): 10, 100, 200, 300.
+3. Verifique, por meio da regressão linear, a variação da concentração de Ozônio em função da velocidade do vento. 
+4. Estime a concentração de Ozônio esperada para as seguintes velocidades do vento (mph): 1.5, 3.7, 10, 15.3, 22.
+
+
+```{r airquality}
+head(airquality)
+
+# 1
+regressao = lm(airquality$Ozone ~ airquality$Solar.R)
+plot(airquality$Solar.R, airquality$Ozone)
+abline(regressao)
+
+# 2
+beta0 = regressao$coefficients['(Intercept)']
+beta1 = regressao$coefficients['airquality$Solar.R']
+
+beta0 + c(10, 100, 200, 300)*beta1
+
+# 3
+regressao = lm(airquality$Ozone ~ airquality$Wind)
+plot(airquality$Wind, airquality$Ozone)
+abline(regressao)
+
+beta0 = regressao$coefficients['(Intercept)']
+beta1 = regressao$coefficients['airquality$Wind']
+# 4
+
+beta0 + c(1.5, 3.7, 10, 15.3, 22)*beta1
+```
+
+
+## Exercício 3
+
+O arquivo Eleicoes2014, disponível na pasta do laboratório, contém dados da eleição de 2014 para Deputado Federal. 
+
+1. Verifique, por meio da regressão linear, a variação do quantitativo de votos nominais (Nominais) em função da receita de campanha (Receitas.em.2014).
+2. Altere a unidade das receitas para dólares americanos (US\$ 1,00 = R\$ 5,00), efetue o deslocamento da variável receitas pelo seu valor médio e encontre os coeficientes.
+
+```{r}
+e2014 <- read.csv2("Eleicoes2014.csv")
+
+head(e2014)
+e2014$Receitas.em.2014 = as.numeric(e2014$Receitas.em.2014)
+
+# 1
+regressao = lm(e2014$Nominais ~ e2014$Receitas.em.2014)
+plot(e2014$Receitas.em.2014, e2014$Nominais)
+abline(regressao)
+
+# 2
+dados_dolar_deslocado = I( 0.2*(e2014$Receitas.em.2014 - mean(e2014$Receitas.em.2014)))
+regressao = lm(e2014$Nominais ~ dados_dolar_deslocado)
+plot(dados_dolar_deslocado, e2014$Nominais)
+abline(regressao)
+
+```
+
+
+
+
+

@@ -1,0 +1,83 @@
+---
+title: "Aula 09"
+author: "Leandro Carísio Fernandes"
+date: "5/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 10)
+```
+
+## Teorema Central do Limite e Intervalos de Confiança
+
+```{r, echo=FALSE}
+source("NormalIC.R")
+
+
+
+```
+
+### 1) A partir das amostras a seguir, utilize a função **dnormalIC** para estimar intervalos de confiança com nível de confiança igual a 80%, 90%, 95% e 99%.
+
+```{r}
+set.seed(76584)
+a1 <- rnorm(100, 30, 3)
+a2 <- rnorm(10000, 20, 3)
+
+media_a1 = mean(a1)
+media_a2 = mean(a2)
+dp_a1 = sd(a1)
+dp_a2 = sd(a2)
+n_a1 = length(a1)
+n_a2 = length(a2)
+
+# 80%
+dnormalIC(media_a1, dp_a1, n_a1,  0.8)
+dnormalIC(media_a2, dp_a2, n_a2,  0.8)
+
+# 90%
+dnormalIC(media_a1, dp_a1, n_a1,  0.9)
+dnormalIC(media_a2, dp_a2, n_a2,  0.9)
+
+# 95%
+dnormalIC(media_a1, dp_a1, n_a1,  0.95)
+dnormalIC(media_a2, dp_a2, n_a2,  0.95)
+
+# 99%
+dnormalIC(media_a1, dp_a1, n_a1,  0.99)
+dnormalIC(media_a2, dp_a2, n_a2,  0.99)
+
+```
+
+
+### 2) Considere que o conjunto **rfdf** abaixo contém os dados da renda familiar da população do do plano piloto no Distrito Federal. Escreva um código **R** que efetue **10.000** simulações para extrair amostras de tamanho **30** e verifique a cobertura real do intervalo de confiança de 95%. 
+
+```{r}
+set.seed(76584)
+rfdf <- rnorm(1500000, 3000, 1200)
+rfdf <- rfdf + abs(min(rfdf))
+hist(rfdf, main="Renda Familiar - Plano Piloto")
+
+media_populacao = mean(rfdf)
+
+total_simulacoes = 10000
+tamanho_amostra = 30
+
+total_ic_cobrem_media_populacional = 0
+for (i in 1:total_simulacoes) {
+  amostra = sample(rfdf, tamanho_amostra, TRUE)
+  media_amostra = mean(amostra)
+  dp_amostra = sd(amostra)
+  ic_amostra = media_amostra + c(-1.96, 1.96)*dp_amostra/sqrt(tamanho_amostra)
+  se_ic_amostra_cobre_media_populacao = ic_amostra[1] < media_populacao & ic_amostra[2] > media_populacao
+  if (se_ic_amostra_cobre_media_populacao) {
+    total_ic_cobrem_media_populacional = total_ic_cobrem_media_populacional + 1
+  }
+}
+
+print(total_ic_cobrem_media_populacional/total_simulacoes)
+```
+
+Das `r total_simulacoes` simulações, `r total_ic_cobrem_media_populacional` cobrem a média populacional. Ou seja, **`r 100*total_ic_cobrem_media_populacional/total_simulacoes`%** das simulações.

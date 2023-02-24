@@ -1,0 +1,196 @@
+---
+title: "Aula 7 - Premissas do Modelo de Regressão"
+date: "15/09/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(olsrr)
+library(car)
+```
+
+
+Para as bases de dados a seguir: (1) verifique a possível ocorrência de outliers; (2) crie modelos aninhados e verifique a inflação de variância dos coeficientes e a redução da soma dos erros quadráticos; (3) escolha um dos modelos do item 2 e verifique as demais premissas da regressão; (4) comente os resultados.
+
+Bases de dados disponíveis em [RDatasets](https://vincentarelbundock.github.io/Rdatasets/datasets.html).
+
+
+### 1 - *CollegeDistance* -	College Distance Data.
+
+Para ver a questão de outliers, vamos usar o mesmo modelo considerado na aula anterior:
+
+```{r}
+df = read.csv("CollegeDistance.csv")
+df$gender = as.factor(df$gender)
+df$ethnicity = as.factor(df$ethnicity)
+df$fcollege = as.factor(df$fcollege)
+df$mcollege = as.factor(df$mcollege)
+df$home = as.factor(df$home)
+df$urban = as.factor(df$urban)
+df$income = as.factor(df$income)
+df$region = as.factor(df$region)
+df$X <- NULL
+
+# Define o modelo e mostra o sumário
+modelo = lm(data = df, formula = score ~ ethnicity + education)
+summary(modelo)
+
+
+```
+
+Para uma primeira inspeção de possíveis outliers, vamos consdirar a distância de Cook:
+
+```{r}
+ols_plot_cooksd_chart(modelo)
+```
+Podemos observar muitos pontos com distância de Cook acima do limiar de 4/n. Vamos ver como cada observação afetaria os betas:
+```{r}
+ols_plot_dfbetas(modelo, print_plot = TRUE)
+```
+
+Algumas observações alteram alguns betas em pouco mais de 0.10 sendo o menor beta igual a 2, ou seja, um desvio de 5% no valor, um grande impacto no modelo. É claro que, se considerássemos o efeito de remover não só uma observação, mas várias simultaneamente, o efeito poderia ser diferente (poderíamos ter efeitos se cancelando ou se reforçando). Entretanto, como não tenho conhecimento suficiente sobre a base de dados (método de coleta sobre as informações), é complicado tomar a decisão de remover alguma coisa aqui.
+
+
+Em relação a inflação de variância, vamos considerar inicialmente o modelo acima como parâmetro e vamos criar outros dois modelos, um adicionando wage e outro adicionando wage e distance. E a partir daí ver como cada variável impacta no aumento da variância. 
+
+```{r}
+# Define o modelo e mostra o sumário
+modelo = lm(data = df, formula = score ~ ethnicity + education)
+modelo_mais_wage = lm(data = df, formula = score ~ ethnicity + education + wage)
+modelo_mais_wage_dist = lm(data = df, formula = score ~ ethnicity + education + wage + distance)
+
+vif(modelo_mais_wage_dist)
+```
+Note que mesmo no exemplo com 4 variáveis não há mta inflação de variância (tudo está próximo de 1). Entretanto, o modelo com 4 variáveis acrescenta muita pouca explicação ao modelo com apenas 2 variáveis quando comparamos o R2:
+
+```{r}
+summary(modelo_mais_wage_dist)$r.squared
+summary(modelo)$r.squared
+```
+Isso pode ser visto também com a soma dos erros quadráticos:
+
+```{r}
+sum(modelo$residuals^2)
+sum(modelo_mais_wage_dist$residuals^2)
+```
+Assim, para testar as demais premissas da regressão, vamos continuar com o modelo básico:
+
+```{r}
+plot(modelo)
+```
+
+Como podemos perceber do primeiro gráfico, no olho não parece ser homocedástico, parece haver uma ligeira dependência da variância dos resíduos em relação aos valores ajustados.
+
+### 2 - *Guns* - More Guns, Less Crime?.
+
+Novamente, vamos partir do modelo que já havíamos construído no exercício anterior:
+
+```{r}
+df = read.csv("Guns.csv")
+df$state = as.factor(df$state)
+df$law = as.factor(df$law)
+df$X = NULL
+
+# Filtra apenas os dados de estados em que há dados em que houve transição
+# na variável law (que indica se havia lei permitindo o porte de arma naquele ano)
+estados_yes = unique(df$state[df$law == 'yes'])
+estados_no = unique(df$state[df$law == 'no'])
+estados_transicao = intersect(estados_yes, estados_no)
+
+df_filtrado = df[df$state %in% estados_transicao, ]
+
+modelo = lm(data = df_filtrado, formula = violent ~ state + law + income)
+summary(modelo)
+```
+
+Para uma primeira inspeção de possíveis outliers, vamos consdirar a distância de Cook:
+
+```{r}
+ols_plot_cooksd_chart(modelo)
+```
+
+E observar como cada observação da base de dados afeta os betas:
+
+```{r}
+ols_plot_dfbetas(modelo, print_plot = TRUE)
+```
+
+Assim como no item anterior, acho complicado decidir por remover alguma informação sem saber se é sujeira na base de dados ou sem conhecer melhor o contexto da base. Então vamos manter como está.
+
+Em relação a inflação de variância, vamos considerar inicialmente o modelo acima e criar um novo modelo com mais 3 variáveis (prisoners, afam, male) e verificar o impacto na variância:
+
+```{r}
+modelo = lm(data = df_filtrado, formula = violent ~ state + law + income)
+modelo_mais_variaveis = lm(data = df_filtrado, formula = violent ~ state + law + income + prisoners + afam + male)
+
+summary(modelo_mais_variaveis)
+
+vif(modelo_mais_variaveis)
+```
+
+Note que as 3 variáveis acrescentam muita variância ao modelo. Além disso. Mas, as 3 variáveis que acrescentam mais são prisoners, afam e income (esta último presente no modelo original). Uma observação aqui é que vamos desconsiderar state, pois sabemos que essa variável categórica será usada depois inclusive para separar as coisas por estado, é importante mantê-la aqui pois podemos ter depois uma comparação por estado (e, se quisermos, também uma agregada).
+
+Vamos comparar então dois modelos. O primeiro com state, law e income (nosso modelo original do exercício anterior) e o segundo com state, law e male. Vamos ver o R2 e vif em cada caso:
+
+```{r}
+modelo_adaptado = lm(data = df_filtrado, formula = violent ~ state + law + male)
+
+summary(modelo)$r.squared
+summary(modelo_adaptado)$r.squared
+
+vif(modelo)
+vif(modelo_adaptado)
+```
+
+O que notamos aqui é que o modelo substituindo income por male aumenta ligeiramente o R2 e diminui a variância dos coeficientes. Assim, é uma boa escolha substituir a variável income por male. Observe que o R2 do modelo com todas essas variáveis é ligeiramente menor que o modelo apenas com male, state e law.
+
+Para testar as demais premissas da regressão, vamos ver como os resíduos se comportam no modelo original (state, law, income) e no modelo melhorado (state, law, male).
+
+Primeiro com state, law e income:
+```{r}
+plot(modelo)
+```
+
+E agora com state, law e male:
+
+```{r}
+plot(modelo_adaptado)
+```
+
+É interessante que o modelo com state, law e income é claramente heterocedástico, com a variância dos resíduos aumentando conforme aumenta o valor predito. Removendo a variável income e substituindo por male, melhoramos um pouco esse aspecto. Entretanto ainda há esse fenômeno, mesmo que um pouco menos que no primeiro caso.
+
+O gráfico QQ també indica que a distribuição dos resíduos não está exatamente parecendo uma gausiana. Há diferenças grandes principalmente a partir de 1 desvio padrão.
+
+### 3 - *	PhDPublications* - Doctoral Publications.
+
+Novamente, vamos partir do modelo considerado no exercício anterior:
+
+```{r}
+df = read.csv("PhDPublications.csv")
+
+df$gender = as.factor(df$gender)
+df$married = as.factor(df$married)
+df$gender = as.factor(df$gender)
+df$X = NULL
+
+df_filtrado = df[df$articles <= 7, ]
+
+modelo = lm(data = df_filtrado, formula = articles ~ . )
+summary(modelo)
+
+```
+
+Conforme especificado no exercício anterior, o modelo com todas as variáveis explica apenas 8% da variação dos dados. Mesmo vários coeficientes serem estatisticamente diferentes de 0, considero que o modelo não tem significância prática, sendo isso é insuficiente pra explicar qualquer coisa e, por isso, acho que não vale a pena tentar usar essas variáveis para explicar o modelo.
+
+Apesar disso, apenas como exercício, vamos ver apenas como ficam os resíduos desse modelo:
+
+```{r}
+plot(modelo)
+```
+
+Note do primeiro e segundo gráfico como esse modelo é ruim. Pelo primeiro gráfico dos resíduos claramente podemos observar que existem variáveis importantes não disponíveis na base (ou, pelo menos, que alguma transformação não linear nas variáveis disponibilizadas é necessária). A normalidade dos resíduos também ficou longe de ser constatata conforme podemos verificar no gráfico QQ.
+
+### 4 - *titanic* - 1912 Titanic passenger survival.
+
+Essa base só faz sentido estudar como uma regressão logit. No exercício anterior fiz uma adaptação para usar regressão linear aqui, mas no caso da adaptação eu não sei se faz muito sentido usar as outras técnicas aqui. Por isso vou pular essa base para esse exércicio.

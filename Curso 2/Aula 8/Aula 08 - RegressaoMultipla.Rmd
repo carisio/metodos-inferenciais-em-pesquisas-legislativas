@@ -1,0 +1,336 @@
+---
+title: "Aula 08 - Modelo de Regressão"
+author: "Leandro Carísio Fernandes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lmtest)
+library(car)
+```
+
+## Regressão múltipla
+
+Carregue a base de dados **NCBirths**, disponível em <https://vincentarelbundock.github.io/Rdatasets/datasets.html>.
+
+Desenvolva os itens a seguir aplicando tecnicas gráficas e formais, e apresente resultados, explicações e considerações que julgar necessários.
+
+### a.	Conheça a estrutura dos dados e explore as variáveis quantitativas e qualitativas. 
+
+A descrição da base de dados no site indica que em 2004 o estado da Carolina do Norte disponibilizou uma base de dados contendo informações sobre o nascimento de bebês naquele estado. A base disponibilizada é uma amostra de 1000 observações de todo o conjunto de dados.
+
+As observações são referentes a 13 variáveis:
+
+- fage: Idade do pai (anos)
+- mage: Idade da mãe (anos)
+- mature: Maturidade da mãe (2 categorias, se é jovem ou não)
+- weeks: Duração da gravidez (semanas)
+- premie: Se é prematuro ou não (2 categorias)
+- visits: Total de visitas ao hospital durante a gravidez (vezes)
+- gained: Ganho de peso durante a gravidez (libras)
+- weight: Peso do bebê no nascimento (libras)
+- lowbirthweight: Se o bebê nasceu com baixo peso ou não (2 categorias)
+- gender: Gênero do bebê (2 categorias)
+- habit: Se fumante ou não (2 categorias)
+- marital: Estado conjugal da mãe no nascimento do bebê (2 categorias, casada ou não)
+- whitemom: Se trata-se de uma mãe branca ou não (2 categorias)
+
+Para iniciar a análise, vamos carregar a base de dados e converter as variáveis categóricas de forma que o R reconheça elas como categóricas. Além disso, vamos converter as variáveis de peso de libras para gramas. Em seguida, vamos checar o sumário desses dados:
+
+```{r}
+# bloco de codigo - item a
+
+df = read.csv('ncbirths.csv')
+df$X = NULL
+df$mature = as.factor(df$mature)
+df$premie = as.factor(df$premie)
+df$lowbirthweight = as.factor(df$lowbirthweight)
+df$gender = as.factor(df$gender)
+df$habit = as.factor(df$habit)
+df$marital = as.factor(df$marital)
+df$whitemom = as.factor(df$whitemom)
+
+df$weight = df$weight * 453.592
+df$gained = df$gained * 453.592
+
+summary(df)
+```
+
+Como podemos observar, há NA's disponíveis em várias variáveis, nas seguintes quantidades:
+
+fage: 171
+weeks: 2
+premie: 2
+visits: 9
+marital: 1
+gained: 27
+habit: 1
+whitemom: 2
+
+Em relação as variáveis numéricas week, visits e gained, como a quantidade de observações NA são relativamente baixas, optei por substituir os valores pela mediana da categoria. Em todos esses três casos há um desvio de menos de uma unidade do conteúdo observado entre a média e a mediana da categoria.
+
+
+```{r}
+df$weeks[is.na(df$weeks)] = median(df$weeks, na.rm=TRUE)
+df$gained[is.na(df$gained)] = median(df$gained, na.rm=TRUE)
+df$visits[is.na(df$visits)] = median(df$visits, na.rm=TRUE)
+```
+
+
+Em relação às variáveis categóricas premie, marital, habit e whitemom, optei por remover essas observações pois elas correspondem a apenas 4 registros:
+
+```{r}
+df = df[!is.na(df$premie),]
+df = df[!is.na(df$marital),]
+df = df[!is.na(df$habit),]
+df = df[!is.na(df$whitemom),]
+```
+
+Feito isso, resta ainda uma forma de tratar os NAs da idade do pai, que correspondem a 171 registros, mais de 17% da base. Assim, optei por substituir a idade do pai pela mediana da idade dos pais dada a idade da mãe:
+
+```{r}
+
+# Primeiro vamos agrupar a idade mediana dos pais para cada idade da mãe:
+media_f_age_dado_m_age = aggregate(df$fage, list(df$mage), FUN=median, na.rm = TRUE)
+colnames(media_f_age_dado_m_age) = c('mage', 'fage')
+
+# Verifica qual a idade das mães cujas idades dos pais não está disponível
+idx_idade_pais_na = is.na(df$fage)
+idade_maes_para_pais_na = df[idx_idade_pais_na, ]$mage
+
+# Pega os valores das idades dos pais equivalentes
+idx_idade_pais_dada_idade_mae = match(idade_maes_para_pais_na, media_f_age_dado_m_age$mage)
+corrige_na_idade_pais = media_f_age_dado_m_age[idx_idade_pais_dada_idade_mae, ]$fage
+
+# Agora substitui os valores
+df$fage[idx_idade_pais_na] = corrige_na_idade_pais 
+```
+
+Ainda há 2 NA's para idade dos pais que não foram possíveis de serem tratados. Analisando a base, vemos que referem-se a gravidez de mães com apenas 13 e 14 anos, sendo que há apenas um registro de cada tipo. Assim, optei por descartar esses registros, já que representam uma porcentagem muito pequena da base:
+
+```{r}
+df = df[!is.na(df$fage),]
+```
+
+Dessa forma, com o tratamento feito dos NAs, apesar da base conter mais de 170 registros com dados faltantes, após o tratamento foram descartados apenas 6 registros.
+
+Vamos analisar novamente o sumário da base de dados após o tratamento. A tabela abaixo mostra a média (medida de tendência central) e os quartis (medidas de dispersão) para as variáveis numéricas e um contador de cada tipo para as variáveis categóricas:
+
+```{r}
+summary(df)
+```
+Para ajudar na visualização desses dados, vamos analisar o histograma de cada variável numérica:
+
+```{r}
+hist(df$fage, breaks=20, main='Histograma da idade do pai', xlab='Idade do pai (anos)', ylab='Frequência')
+hist(df$mage, breaks=20, main='Histograma da idade da mãe', xlab='Idade da mãe (anos)', ylab='Frequência')
+hist(df$weeks, breaks=20, main='Histograma da duração da gravidez', xlab='Duração da gravidez (semanas)', ylab='Frequência')
+hist(df$visits, breaks=20, main='Histograma de visitas ao hospital', xlab='Número de visitas ao hospital', ylab='Frequência')
+hist(df$gained/1000, breaks=20, main='Histograma do ganho de peso da mãe', xlab='Ganho de peso da mãe (Kg)', ylab='Frequência')
+hist(df$weight, breaks=20, main='Histograma do peso do bebê', xlab='Peso do bebê (gramas)', ylab='Frequência')
+```
+
+Por fim, vamos checar em um boxplot como é a relação da idade da mãe de acordo com as categorias premie (se o bebê é prematuro ou não) e marital (se é casada ou não). Vamos desconsiderar a categoria "mature" pois ela é derivada de idade:
+
+
+```{r}
+boxplot(mage ~ premie, df)
+boxplot(mage ~ marital, df)
+```
+
+O que podemos observar aqui é que não há nenhuma relação entre a idade da mãe e se o bebê é prematuro ou não. Além disso, a idade média das mães não casadas é inferior a idade média das mães casadas.
+
+### b.	Faça análises marginais e multivariadas.
+
+Apesar de termos 13 variáveis, algumas delas são diretamente derivadas de outras:
+
+- premie: a definição se é ou não prematuro é derivada da variável week. Podemos ver que para ser considerado não prematura, o conteúdo de weeks deve ser no mínimo 37 (este é o valor de min(df[df\$premie == 'full term',]\$weeks)). Além disso, para ser considerado prematuro, weeks deve ser no máximo 36 (este é o valor de max(df[df\$premie == 'premie',]\$weeks)).
+
+- mature: a mesma análise acima também se aplica à relação entre mature e mage, sendo que mature == 'younger mom' é a categria para mage <= 34 e mature == 'mature mom' é a categoria usada para mage >= 35.
+
+- lowbirthweight: a mesma análise acima também se aplica à relação entre lowbirthweight e weight (peso do bebê). Bebês com weight até 5.5 libras são categorizados com lowbirthweight igual a 'low' e, acima disso, com 'not low'.
+
+Assim, essas três categorias agrupam os resultados de outras três variáveis numéricas, de forma que as variáveis numéricas contém as mesmas informações que as categóricas (além de outras informações, claro). Por isso, vamos começar removendo da base de dados essas 3 variáveis:
+
+```{r}
+df$mature = NULL
+df$premie = NULL
+df$lowbirthweight = NULL
+```
+
+Feito isso, vamos ver o resultado da função pairs e checar visualmente a relação entre algumas variáveis:
+
+```{r}
+pairs(df)
+```
+
+É possível perceber uma relação linear entre as variáveis fage e mage (o que de certa forma é esperado, visto que as pessoas tendem a se relacionar com outras de idade próxima).
+
+Além disso há uma relação entre as variáveis weeks e weight, o que também é esperado, visto que o peso do bebê tende a aumentar com a duração da gravidez. Entretanto, aparentemente parece ser uma relação logaritmica.
+
+Não há outras relações claras entre as variáveis, nem em relação a gained (ganho de peso da mãe) e weight (peso do bebê) como poderíamos supor inicialmente.
+
+Vamos analisar as correlações entre as variáveis numéricas:
+
+```{r}
+variaveis_numericas = c('fage', 'mage', 'weeks', 'visits', 'gained', 'weight')
+cor(df[,variaveis_numericas], method = 'pearson')
+```
+É possível ver apenas 2 relações mais fortes, entre fage e mage e entre weeks e weight. Ambas relações já haviam sido identificadas visualmente pela função pairs. Sobre a relação entre weeks e weight, visualmente parece haver uma relação melhor logarítmica entre elas. Vamos então calcular a correlação entre weight e weeks e weight e log(weeks):
+
+```{r}
+cor(df$weeks, df$weight)
+cor(log(df$weeks), df$weight)
+```
+
+Há um ganho de menos de 1.5% usando a transformação da variável weeks. Como é pouca coisa, não acho relevante trabalhar com log(weeks) e, por isso, manterei nas análises a variável weeks.
+
+Além disso, há alguma correlação positiva entre 10% e 20% entre mage e visits, visits e weeks, visits e weight e também entre weight e gained. Essa primeira correlação indica que a idade da mãe tem alguma influência na quantidade de visitas ela faz ao médico durante a gravidez (talvez porque são mais responsáveis ou preocupadas com a gestação?). As outras correlações todas tem relação com o tempo de gestação, afinal em uma gestação maior há mais tempo para acompanhar a gestação no médico (visits) e, também, ganhar peso.
+
+Dadas as variáveis que temos na base de dados, podemos tentar construir um modelo para estimar o peso do bebê no nascimento.
+
+Inicialmente vamos simplesmente usar todas as variáveis e ver o sumário:
+
+```{r}
+summary(lm(weight ~ ., df))
+```
+
+O resultado indica que todas as variáveis da base de dados poderiam explicar até 49.51% da variação de weight. Entretanto, há algumas variáveis aqui que parecem não ser relevantes: fage, mage e visits. Vamos refazer o modelo sem elas:
+
+```{r}
+summary(lm(weight ~ . -visits -fage -mage, df))
+```
+Mesmo sem essas três variáveis o modelo ainda explica 49.39% da variação do peso. Apesar do coeficiente de gained ser muito pequeno (9.112e-03), ele é referente ao ganho de peso da mãe em gramas. Assim, o ganho do peso médio da mãe (cerca de 13kg) mais ou menos 1 desvio padrão (cerca de 6.4 kg) gera uma variação de mais de 180 gramas no resultado final
+
+Note que, exceto pela variável weeks e gained, todas as outras são categóricas com apenas duas opções. Ou seja, o impacto no peso estimado do bebê devido a essas variáveis é exatamente o valor do peso calculado. Assim, o peso poderá variar de cerca de -280 gramas (para a combinação 'not married' e 'smoker') até 270 gramas (para a combinação 'male' e 'white mom'). Ou seja, essas variáveis causam uma variação no peso final de até 550 gramas.
+
+Por outro lado, a variável numérica weeks é a que produz maior variação na variável weight. Com weeks variando entre 20 e 45, o impacto do coeficiente (151) significa uma variação na estimativa de peso entre 3020 e 6795 gramas.
+
+Por isso, faz sentido pensarmos em um modelo muito simples relacionando apenas weight e weeks:
+
+```{r}
+summary(lm(weight ~ weeks, df))
+```
+Apesar de ser um modelo bem simples, ainda explicamos 44.91% da variação de weight. Nesse ponto vale a pena voltarmos a considerar a possibilidade de usar log(weeks) em vez de weeks:
+
+```{r}
+summary(lm(weight ~ log(weeks), df))
+```
+Ou seja, um modelo que usa log(weeks) vai ajudar a prever pouco menos de 1.5 pontos percentuais da variação dos dados de weight. Devido a simplicidade de se usar weeks diretamente, vamos continuar com a abordagem usando weeks. Ao final do processo podemos testar também com log(weeks).
+
+Feita essa análise individual, podemos testar alguns modelos partindo de weight ~ weeks e indo em direção a weight ~ weeks + gained + marital + habit + gender + whitemom.
+
+```{r}
+modelo_padrao = lm(weight ~ weeks, df)
+modelo_padrao_com_gained = lm(weight ~ weeks + gained, df)
+modelo_padrao_com_gained_gender = lm(weight ~ weeks + gained + gender, df)
+modelo_padrao_com_gained_gender_wm = lm(weight ~ weeks + gained + gender + whitemom, df)
+modelo_padrao_com_gained_gender_wm_hab = lm(weight ~ weeks + gained + gender + whitemom + habit, df)
+modelo_padrao_com_gained_gender_wm_hab_marital = lm(weight ~ weeks + gained + gender + whitemom + habit + marital, df)
+```
+
+Agora vamos ver a inflação de variância considerando o modelo mais completo proposto:
+
+```{r}
+vif(modelo_padrao_com_gained_gender_wm_hab_marital)
+```
+Com todos os coeficientes próximos de 1 podemos considerar que as variáveis são bem pouco correlacionadas.
+
+Obs.: Uma consideração que estou fazendo aqui é que a função vif do pacote cars trabalha corretamente com variáveis categóricas.
+
+Agora vamos usar a função anova() em modelos alinhados para checar a redução dos erros quadrados a medida que aumentamos a complexidade dos modelos:
+
+```{r}
+anova(modelo_padrao, modelo_padrao_com_gained, modelo_padrao_com_gained_gender, modelo_padrao_com_gained_gender_wm, modelo_padrao_com_gained_gender_wm_hab, modelo_padrao_com_gained_gender_wm_hab_marital)
+```
+De todos os modelos acima, vamos considerar aqui o modelo weight ~ weeks gained + gender + whitemom + habit + marital (que explica 49.39% da variação de weight) em detrimento ao modelo simples weight ~ weeks (que explica 44.91% da variação de weight). 
+
+Note aqui que é óbvio que o principal explicador para o peso do bebê é a duração da gestação. Entretanto, as outras 4 variáveis categóricas são interessantes pois ajudam a explicar algumas algumas coisas e a levantar questões sociais e comportamentais relevantes. 
+
+Seguindo a discussão anterior, das 4 variáveis vemos duas que são genéticas (o sexo do bebê e a raça da mãe). Não há controle sobre isso, mas há questões interessantes que podem ser levantadas em relação a raça da mãe. Por exemplo, por que o fato da mãe ser branca (na classificação americana) tem um impacto no aumento do peso de 107 gramas? Pergunta semelhante acaba surgindo ao ver os resultados de marital: porque mulheres não casadas (um fato social) impactam na diminuição do peso? Que tipos de hábitos geram isso?
+
+### c.	Verifique as premissas do modelo linear.
+
+Para checar as premissas do modolo, vamos ver primeiro os gráficos:
+
+```{r}
+plot(modelo_padrao_com_gained_gender_wm_hab_marital)
+```
+
+O primeiro gráfico "fitted values versus residuals" apresenta uma mancha aproximadamente concentrada ao redor do peso médio (aproximadamente 3200 gramas)além de alguns pontos espalhados em outras direções. Visualmente não há indicação clara de heterocedástico da distribuição dos resíduos. Podemos aplicar o teste de Breusch-Pagan para tirar a dúvida:
+
+```{r}
+lmtest::bptest(modelo_padrao_com_gained_gender_wm_hab_marital)
+```
+
+Esse teste indica como H0 a homocedasticidade dos resíduos. Como p = 0.11, falhamos em rejeitar a hipótese alternativa (não há evidências suficientes para cogitar a heterodasticidade dos resíduos).
+
+Outro critério que devemos ter é uma distribuição normal para os resíduos. O gráfico QQ acima mostra que entre -2 e +2 desvios padrão a distribuição é praticamente normal. O histograma dos resíduos também ajuda a mostrar isso, conforme figura abaixo que tem um formato aproximadamente normal:
+
+```{r}
+hist(modelo_padrao_com_gained_gender_wm_hab_marital$residuals, breaks=20, main='Histograma dos resíduos', xlab='Resíduos (gramas)', ylab='Frequência')
+```
+
+Entretanto, não basta a inspeção visual. Podemos aplicar o teste de Shapiro-Wilk nos resíduos para testar se a distribuição segue uma normal ou não:
+
+```{r}
+shapiro.test(modelo_padrao_com_gained_gender_wm_hab_marital$residuals)
+```
+
+Dado o valor de p, falhamos em rejeitar a hipótese alternativa de que os resíduos não seguem a distribuição normal.
+
+
+### d.	Com base nas analises, proponha um ou mais modelos lineares multivariados. Explique a sua escolha.
+
+O modelo escolhido foi:
+
+> weight ~ weeks + gained + gender + whitemom + habit + marital
+
+Assim, o modelo tenta explicar o peso do bebê no nascimento (weight) tendo em vista a duração da gestação (weeks), o ganho de peso da mãe (gained), o gênero do bebê (gender), se a mãe é branca (no padrão americano, variável whitemom), se é fumante ou não (habit) e se é casada ou não (marital).
+
+As duas variáveis que representam peso na base de dados original estão dadas em libras. Para facilitar o entendimento do modelo, ambas foram convertidas para gramas.
+
+A justificativa para a escolha desse modelo foi construída ao longo dos itens anteriores deste exercício, mas podem ser resumidas assim:
+
+1 - Inicialmente removi as variáveis mature, premie e lowbirthweight pois são variáveis categóricas derivadas diretamente de mage, week e weight.
+
+2 - Considerando um modelo com todas as variáveis restantes, o R2 foi de 49.51%. Este é o maior valor de R2 que podemos chegar com esse conjunto de dados sem transformação de nenhuma variável. Ao analisar a transformação da variável week usando logaritmo, ganhamos um pouco de explicação no R2 mas é um valor pequeno que considero que não justifica o aumento de complexidade do modelo.
+
+3 - A partir desse conjunto de dados removi as variáveis visits, fage, e mage, pois o coeficiente que as representava não eram significativamente diferentes de 0. Esse novo modelo (que foi o modelo escolhido, weight ~ weeks + gained + gender + whitemom + habit + marital) tem R2 no conjunto de dados de 49.39%, uma pequena redução em relação ao modelo com todas as variáveis. Devido a pequena redução do R2, este é mais um indicativo de que essas 3 variáveis não acrescentam muito a explicação dos dados de peso do bebê. Ou seja, nesse ponto 
+
+4 - Após análise dos coeficientes é possível observar que a variáveis que mais produz efeito no peso do bebê é, obviamente, o tamanho da gestação. Essa variável sozinha gera um efeito de 3020 a 6795 gramas. Entretanto, as outras variáveis combinadas podem gerar um deslocamento no peso estimado de até 550 gramas. Assim, um modelo relacionando apenas weight ~ weeks também explica muita coisa, perdendo apenas cerca de 10% na explicação da variável (de fato, um modelo desse tipo reduziria o R2 de 49.39% para 44.91%).
+
+5 - Devido ao fato das outras variáveis levantarem questões importantes que poderiam ser discutidas (por exemplo, impacto de fumar ou não, porque o peso do filho de uma mulher casada é maior do que de uma que não é casa?), mantive o modelo com essas 5 variáveis. Além disso, foi verificada a inflação da variância e constatado que não há muita colinearidade entre essas variáveis.
+
+6 - Após análise dos resíduos com inspeção visual e testes de Shapiro-Wilk e Breusch-Pagan, verifiquei a homocedasticidade e normalidade deles, indicando um bom modelo.
+
+Recapitulando, este é o sumário do modelo:
+
+```{r}
+summary(modelo_padrao_com_gained_gender_wm_hab_marital)
+```
+
+### e.	Utilize o(s) modelo(s) proposto(s) para fazer pelo menos uma predição
+
+Para essa predição, vamos fazer predições considerando a combinação de todas as possibilidades para as variáveis categóricas. Vamos considerar as variáveis numéricas weeks e gained como fixas e iguais a, respectivamente, 39 semanas (a mediana na base de dados) e 13607 gramas (a média na base de dados):
+
+```{r}
+weeks = rep(39, 16)
+gained = rep(13607, 16)
+gender = c(rep('male', 8), rep('female', 8))
+whitemom = rep(c(rep('white', 4), rep('not white', 4)), 2)
+habit = rep(c('nonsmoker', 'nonsmoker', 'smoker', 'smoker'), 4)
+marital = rep(c('married', 'not married'), 8)
+
+
+df_predicao = data.frame(weeks, gained, gender, whitemom, habit, marital, stringsAsFactors = TRUE)
+
+
+df_predicao$predicao_weight = predict(modelo_padrao_com_gained_gender_wm_hab_marital, df_predicao)
+
+knitr::kable(df_predicao)
+
+```
+
+Podemos observar que o peso máximo predito foi de aproximadamente 3500 gramas e, o mínimo, 2946 gramas. Ou seja, uma amplitude de aproximadamente 550 gramas, conforme análise dos coeficientes feita anteriormente.

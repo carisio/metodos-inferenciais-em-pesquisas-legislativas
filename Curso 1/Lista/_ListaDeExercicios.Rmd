@@ -1,0 +1,575 @@
+---
+title: "Métodos Inferenciais em Pesquisas Legislativas"
+author: Leandro Carísio Fernandes
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+options(digits = 2, OutDec = ",")
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark=".")
+})
+rm(list = ls())
+```
+
+## Ambiente R
+
+Caso ainda não tenha instalado a linguagem R e o ambiente RStudio, baixe os arquivos e efetue a instalação:
+
+* [R 4.1.3](https://cran.r-project.org/bin/windows/base/)
+* [RStudio 2022.02.1-461](https://www.rstudio.com/products/rstudio/download/)
+
+Antes de prosseguir:
+
+* crie uma pasta chamada "ListaMIPL" na área de trabalho;
+* configure essa pasta como diretório de trabalho, selecionando o menu "Session->Set Working Directory->Choose Directory...", ou pressionando as teclas "Ctrl+Shift+H";
+
+## Atividade
+
+Agora vamos analisar um conjunto de dados real de dados eleitorais referentes às eleições de 2016.
+
+> a. Consulte o Repositório de Dados Eleitorais do TSE <https://dadosabertos.tse.jus.br/dataset/>, acesse a área **Etiquetas**, selecione **Ano 2016** e o conjunto de dados **Candidatos - 2016**.
+
+> b. Selecione o link **Bens de candidatos** e baixe o arquivo **bem_candidato_2016.zip** para a pasta de trabalho definida no RStudio. Do arquivo baixado, extraia os arquivos **bem_candidato_2016_BRASIL.csv** e **leiame.pdf**. Consulte o dicionário de dados (arquivo leiame.pdf) e conheça a estrutura do arquivo descompactado. 
+
+> c. Retorne á área **Candidatos - 2016**, selecione o link **Candidatos** e baixe o arquivo **consulta_cand_2016.zip** para a pasta de trabalho. Do arquivo baixado, extraia os arquivos **consulta_cand_2016_BRASIL.csv** e **leiame.pdf**. Consulte o dicionário de dados (arquivo leiame.pdf) e conheça a estrutura do arquivo descompactado.
+
+Os itens 'a', 'b' e 'c' dessa lista de exercícios se referem apenas a base de dados e ler o dicionário de dados associado.
+
+Além do significado de cada coluna, é relevante descatar a forma como essas bases de dados tratam os valores faltantes (missing values: NA). De acordo com os dicionários de ambas as bases, NAs são codificados de quatro formas distintas:
+
+- #NULO: Informação em branco em um campo texto
+- #NE: Informação não era registrada na época pelos sistemas eleitorais, para campo texto
+- -1: Equivalente de #NULO para campo numérico
+- -3: Equivalente de #NE para campo numérico
+
+> d. Leia os arquivos **bem_candidato_2016_BRASIL.csv** e **consulta_cand_2016_BRASIL.csv**, crie os *data frames* **bemCand** e **cand**, respectivamente, mostre as quantidades de linhas e colunas e verifique se existem valores não informados nesses conjuntos de dados.
+
+```{r}
+# leitura do arquivo 1
+
+# De acordo com a documentação (arquivo leiame.pdf) os campos preenchidos como #NULO ou #NE (string) e os campos preenchidos com -1 e -3 (numéricos) indicam valores não disponíveis (ou não informado ou não registrado na época).
+# Por isso é necessário informar esses valores no parâmetro na.strings na hora de ler o arquivo. Como o csv contém dados entre aspas, por precaução vamos considerar também as strings "-1" e "-3"
+
+bemCand = read.csv2('bem_candidato_2016_BRASIL.csv', na.strings=c("#NULO#", "#NE#", "-1", "-3", -1, -3))
+
+# linhas e colunas
+linhas_bem_cand = nrow(bemCand)
+colunas_bem_cand = ncol(bemCand)
+
+# valores não informados
+# Existem 949 registros com missing values e todos estão no campo DS_BEM_CANDIDATO (Descrição dos bens dos candidatos)
+num_registros_bem_cand_com_na = nrow(bemCand[rowSums(is.na(bemCand)) > 0,])
+
+# leitura do arquivo 2
+
+# De acordo com a documentação (arquivo leiame.pdf) os campos preenchidos como #NULO ou #NE (string) e os campos preenchidos com -1 e -3 (numéricos) indicam valores não disponíveis (ou não informado ou não registrado na época). Por isso é necessário informar esses valores no parâmetro na.strings na hora de ler o arquivo.
+cand = read.csv2('consulta_cand_2016_BRASIL.csv', na.strings=c("#NULO#", "#NE#", "-1", "-3", -1, -3))
+
+# linhas e colunas
+linhas_cand = nrow(cand)
+colunas_cand = ncol(cand)
+
+# valores não informados
+# Todos os registros informados possuem algum missing value. De fato, podemos observar que a variável CD_MUNICIPIO_NASCIMENTO está com -3 para todos os candidatos, ou seja, a informação não era registrada em banco de dados pelos sistemas eleitorais. Mesmo se desconsiderarmos essa coluna, há NA em outros campos, como o campo NM_SOCIAL_CANDIDATO que possui quase todos os registros como #NULO#  (exceto 57 registros)
+num_registros_cand_com_na = nrow(cand[rowSums(is.na(cand)) > 0,])
+
+```
+
+A quantidade de linhas e colunas no arquivo bem_candidato_2016_BRASIL.csv é, respectivamente, **`r linhas_bem_cand`** e **`r colunas_bem_cand`**. Existem **`r num_registros_bem_cand_com_na`** observações que contém valores não informados. Todos esses valores estão no campo DS_TIPO_BEM_CANDIDATO.
+
+Já para o arquivo consulta_cand_2016_BRASIL.csv a quantidade de linhas e colunas é, respectivamente, **`r linhas_cand`** e **`r colunas_cand`**. Existem **`r num_registros_cand_com_na`** observações que contém valores não informados. De fato, podemos observar que a variável CD_MUNICIPIO_NASCIMENTO está com -3 para todos os candidatos, ou seja, a informação não era registrada em banco de dados pelos sistemas eleitorais. Mesmo se desconsiderarmos essa coluna, há valores não informados em outros campos, como o campo NM_SOCIAL_CANDIDATO que possui quase todos os registros como #NULO#  (exceto 57 registros)
+
+
+> e. Apresente as seguintes informações:
+> * quantidade de unidades eleitorais apuradas em 2016;
+> * lista dos tipos de bens levantados pelo TSE;
+> * histograma dos valores de bens referentes a embarcações.
+ 
+```{r}
+# quantidade de unidades eleitorais apuradas em 2016
+qtd_ue = length(unique(cand$SG_UE))
+
+# lista dos tipos de bens levantados pelo TSE
+# Primeiro checamos a existência de NA nesse campo... 
+sum(is.na(bemCand$DS_TIPO_BEM_CANDIDATO)) 
+# ... como não existe NA, então vamos pegar direto os tipos únicos:
+lista_tipos_bens = sort(unique(bemCand$DS_TIPO_BEM_CANDIDATO))
+
+# histograma dos valores de bens referentes a direito de autor, de inventor e patente
+dados_direito_autor_inventor_patente = bemCand[bemCand$DS_TIPO_BEM_CANDIDATO == "Direito de autor, de inventor e patente",]
+hist(dados_direito_autor_inventor_patente$VR_BEM_CANDIDATO, breaks = 20, xlab="Valor (R$)", ylab="Frequência", main="Direito de autor, de inventor e patente")
+
+# histograma dos valores de bens referentes a embarcações
+dados_embarcacoes = bemCand[bemCand$DS_TIPO_BEM_CANDIDATO == "Embarcação",]
+hist(dados_embarcacoes$VR_BEM_CANDIDATO, breaks = 20, xlab="Valor", ylab="Frequência", main="Embarcações")
+
+```
+
+
+A quantidade de unidades eleitorais apuradas em 2016 foi de **`r qtd_ue`**.
+
+Os tipos de bens apurados pelo TSE em 2016 foram:
+
+```{r}
+kable(lista_tipos_bens, col.names=c("Tipos de bens apurados em 2016 pelo TSE"))
+```
+
+Em relação ao histograma, o enunciado do exercício pede de embarcações, mas o comentário no esqueleto do código pede o histograma relacionado a direito de autor, de inventor e patente. Por isso foi exibido o histograma dos dois tipos de bens nas figuras acima.
+
+O histograma de embarcações parece mostrar que tudo está concentrado no primeiro bin. Os dados mostram um total de 2.108 registros de embarcações sendo que uma delas foi declarada com valor de aproximadamente R$ 22 milhões, 3 embarcações acima de R$ 1 milhão e todas as outras com valores abaixo disso. Com isso, o histograma mostra a concentração de dados no primeiro bin e passa a ideia visual de que os outros estão vazios (o que não é verdade). Algo semelhante ocorre com o histograma de direito de autor, de inventor e patente.
+
+> f. Investigue as formas de extração de subconjuntos de dados a partir de um conjunto maior por meio do pacote **dplyr**. consulte [Introdução ao Dplyr](https://analisereal.com/tag/dplyr/)), com atenção ao item **Agrupando e sumarizando**. Também a aula [Manipulação de dados utilizando o pacote dplyr](https://www.youtube.com/watch?v=D83BvonKAFM) é bastante útil. Você precisará dos pacotes **dplyr** e **tidyr**, que serão instalados pelo código abaixo, caso ainda não estejam disponíveis no ambiente RStudio.
+
+```{r}
+suppressWarnings(suppressMessages( if(!require(dplyr)) { install.packages('dplyr') }  ))
+suppressWarnings(suppressMessages( if(!require(tidyr)) { install.packages('tidyr') }  ))
+
+library(dplyr)
+library(tidyr)
+```
+
+Esse item refere-se apenas a comentários gerais do que deve ser feito (instalação de bbliotecas etc), sem necessidade de uma resposta direta.
+
+> g. Crie um subconjubto de dados chamado **agregado**, contendo os campos SQ_CANDIDATO, SG_UF, NM_UE e VR_TOTAL_BENS, onde VR_TOTAL_BENS é o valor total do patrimônio declarado pelo candidato. Liste os **vinte** candidatos com o **maior** patrimônio declarado e **todos** os candidatos com o menor patrimônio declarado.
+
+```{r}
+agregado = bemCand %>%
+    # Seleciona apenas os campos solicitados pelo exercício
+    select(SQ_CANDIDATO, SG_UF, NM_UE, VR_BEM_CANDIDATO) %>%
+    # Agrupa por candidato
+    group_by(SQ_CANDIDATO) %>%
+    # Cria uma coluna VR_TOTAL_BENS com a soma de todos os bens do candidato
+    mutate(VR_TOTAL_BENS = sum(VR_BEM_CANDIDATO)) %>%
+    # Remove a coluna VR_BEM_CANDIDATO
+    select(-VR_BEM_CANDIDATO) %>%
+    # Remove as duplicatas
+    distinct %>%
+    # Ordena por valor total de bens
+    arrange(desc(VR_TOTAL_BENS))
+
+candidatos_maiores_patrimonios = cand[cand$SQ_CANDIDATO %in% agregado$SQ_CANDIDATO[1:20], c("SQ_CANDIDATO", "NM_CANDIDATO")]
+candidatos_maiores_patrimonios = merge(agregado, candidatos_maiores_patrimonios)
+candidatos_maiores_patrimonios = candidatos_maiores_patrimonios %>% arrange(desc(VR_TOTAL_BENS))
+nome_20_candidatos_maiores_patrimonios = candidatos_maiores_patrimonios$NM_CANDIDATO
+
+
+sq_candidato_menor_patrimonio = agregado$SQ_CANDIDATO[agregado$VR_TOTAL_BENS == min(agregado$VR_TOTAL_BENS)]
+nome_todos_candidatos_com_menor_patrimonio = cand$NM_CANDIDATO[cand$SQ_CANDIDATO %in% sq_candidato_menor_patrimonio]
+
+```
+
+Uma forma possível para criar a variável 'agregado' é através dos seguintes passos:
+
+- selecionar apenas os campos que o exercício pede (SQ_CANDIDATO, SG_UF, NM_UE, VR_BEM_CANDIDATO)
+- agrupar por candidato
+- criar uma coluna VR_TOTAL_BENS com a soma de todos os bens do candidato
+    - nesse ponto temos um conjunto de dados com variáveis SQ_CANDIDATO, SG_UF, NM_UE, VR_BEM_CANDIDATO e VR_TOTAL_BENS, tudo agrupado por SQ_CANDIDATO.
+- remover a coluna VR_BEM_CANDIDATO
+    - com a remoção da variável, sobram as variáveis SQ_CANDIDATO, SG_UF, NM_UE e VR_TOTAL_BENS. O que diferenciava cada observação até o momento era o valor do bem de cada candidato. Assim teremos diversas observações duplicadas aqui
+- remove as observações duplicadas
+- para facilitar a visualização, ordena por valor total do bem
+
+Os 20 candidatos com maior patrimônio são (ordenados por patrimônio):
+
+```{r}
+kable(nome_20_candidatos_maiores_patrimonios, col.names = c('Os 20 candidatos com os maiores patrimônios'))
+```
+
+Uma observação relevante é que nessa lista de exercício não foi feita uma etapa de limpeza dos dados. Usamos os dados como foram declarados, sem fazer uma crítica sobre a veracidade deles. Assim, não podemos dizer que a lista com os 20 candidatos com os maiores patrimônio declarados são necessariamente os 20 candidatos mais ricos. Como exemplo, o bem de maior valor foi declarado pelo segundo candidato da lista e está descrito como "UMA CASA RESIDENCIAL E SEU REPCTIVO TERRENO NA AV CORONEL TEODOLINO PERREIRA DE ARAUJO NUMERO 1450 CENTRO ARAGUARI- MINAS GERAIS" com valor de R$ 3 bilhões de reais. Possivelmente trata-se de um erro de preenchimento.
+
+O menor valor de patrimônio declarado pelos candidatos foi de R$ `r min(agregado$VR_TOTAL_BENS)`. Os seguintes candidatos declararam esse valor:
+
+
+```{r}
+kable(nome_todos_candidatos_com_menor_patrimonio, col.names = c('Candidatos sem patrimônio declarado'))
+```
+
+> h. Mostre os histogramas dos valores patrimoniais totais dos candidatos nas cidades de BELO HORIZONTE e PARANAGUÁ.
+
+Para o histograma do valor total dos bens dos candidatos nessas duas localidades podemos simplesmente partir da variável 'agregado' e filtrar as cidades usando a variável NM_UE.
+
+```{r}
+
+agregado_bh = agregado %>%
+              filter(NM_UE == 'BELO HORIZONTE')
+hist(agregado_bh$VR_TOTAL_BENS, xlab="Valor (R$)", ylab="Frequência", main="Valor patrimonial declarado pelos candidatos em Belo Horizonte")
+
+agregado_paranagua = agregado %>%
+              filter(NM_UE == 'PARANAGUÁ')
+hist(agregado_paranagua$VR_TOTAL_BENS, xlab="Valor (R$)", ylab="Frequência", main="Vvalor patrimonial declarado pelos candidatos em Paranaguá")
+
+```
+
+> i. Retire do *data frame* **cand** os registros referentes ao segundo turno da eleição e mostre as quantidades de linhas e colunas resultantes.
+
+```{r}
+
+cand = cand %>%
+  # Retirar o segundo turno é o mesmo que filtrar apenas o primeiro turno
+  filter(NR_TURNO == 1)
+nrow(cand)
+ncol(cand)
+
+```
+
+Para retirar as informações do segundo turno das eleições podemos passar o dataframe por um filtro que seleciona apenas os registros com variável NR_TURNO == 1. O dataframe resultante (cand) contém `r nrow(cand)` linhas e `r ncol(cand)` colunas referentes ao primeiro turno das eleições.
+
+> j. O código abaixo acrescenta a coluna **VR_TOTAL_BENS** ao *data frame* **cand**, por meio da função **merge** (consulte [Tudo sobre Joins (merge) em R](https://www.fulljoin.com.br/posts/2016-05-12-tudo-sobre-joins/) para saber mais). Liste o nome, a unidade eleitoral, o partido e o valor patrimonial dos vinte candidatos com maior valor declarado.
+
+```{r}
+cand <- merge(cand,agregado[,c("SQ_CANDIDATO", "VR_TOTAL_BENS")], by = "SQ_CANDIDATO", all = TRUE)
+
+# Ordena o dataframe por VR_TOTAL_BENS
+cand <- cand %>% arrange(desc(VR_TOTAL_BENS))
+
+nome_20_candidatos_maiores_patrimonios = cand$NM_CANDIDATO[1:20]
+
+```
+
+O dataframe cand possui todos os registros de todos os candidatos do primeiro turno já com a informação do valor total dos bens por candidato. Para encontrar os 20 candidatos com maior valor patrimonial, primeiro orndenamos os candidatos por VR_TOTAL_BENS e, em seguida, usamos a seleção por fatiamento para obter os 20 primeiros registros.
+
+O nome dos candidatos com os maiores patrimônios delcarados é:
+
+```{r}
+kable(nome_20_candidatos_maiores_patrimonios, col.names="Os 20 candidatos com os maiores patrimônios")
+```
+
+> k. Liste os dez partidos com maior patrimônio declarado pelos candidatos.
+
+```{r}
+valor_por_partido = cand %>%
+    # Seleciona apenas a sigla do partido e o valor total dos bens
+    select(SG_PARTIDO, VR_TOTAL_BENS) %>%
+    # Agrupa por partido
+    group_by(SG_PARTIDO) %>%
+    # Cria uma coluna com o valor total de bens por partido. Desconsidera NA
+    mutate(VR_TOTAL_BENS_POR_PARTIDO_MILHOES = sum(VR_TOTAL_BENS, na.rm=TRUE)/1e6) %>%
+    # Remove a coluna de VR_TOTAL_BENS (que representa o candidato)
+    select(-VR_TOTAL_BENS) %>%
+    # Remove duplicatas
+    distinct %>%
+    # Organiza do maior pro menor
+    arrange(desc(VR_TOTAL_BENS_POR_PARTIDO_MILHOES))
+
+dez_partidos_com_maior_valor_declarado = valor_por_partido[1:10,]
+```
+
+
+Foi criada a variável 'valor_por_partido' a partir de uma série de operações sobre o dataframe 'cand' com o objetivo de representar o valor gasto por partido. A variável foi criada a partir das seguintes operações:
+
+- com a lista de candidato, seleciona apenas a lista do partido e o valor total dos bens do candidato (SG_PARTIDO e VR_TOTAL_BENS)
+- cgrupa por partido
+- cria uma nova variável VR_TOTAL_BENS_POR_PARTIDO_MILHOES que representa a soma de VR_TOTAL_BENS por partido, em milhões
+- remove a variável VR_TOTAL_BENS
+    - nesse ponto o dataframe resultante tem apenas as variáveis SG_PARTIDO e VR_TOTAL_BENS_POR_PARTIDO_MILHOES. Como cada observaçõa(linha) representava um candidato, há várias duplicadas quando olhamos apenas essas variáveis
+- remove as duplicadas
+- ordena a tabela por maior valor de bens por partido
+
+Com esse dataframe basta separarmos os 10 partidos com maior patrimônio declarado pelos candidatos e exibir o resultado:
+
+```{r}
+kable(dez_partidos_com_maior_valor_declarado, col.names=c("Partido", "Valor total declarado pelos candidatos (R$ milhões)"))
+```
+
+> l. Qual é o quantitativo de candidatos por raça nos estados de Alagoas, São Paulo e Paraná?
+
+```{r}
+
+cand_por_raca_al = cand %>%
+    # Filtra Alagoas
+    filter(SG_UF == 'AL') %>%
+    # Seleciona apenas a coluna DS_COR_RACA
+    select(DS_COR_RACA) %>%
+    # Conta a frequência de cada grupo
+    count(DS_COR_RACA)
+
+cand_por_raca_sp = cand %>%
+    # Filtra São Paulo
+    filter(SG_UF == 'SP') %>%
+    # Seleciona apenas a coluna DS_COR_RACA
+    select(DS_COR_RACA) %>%
+    # Conta a frequência de cada grupo
+    count(DS_COR_RACA)
+
+cand_por_raca_pr = cand %>%
+    # Filtra Paraná
+    filter(SG_UF == 'PR') %>%
+    # Seleciona apenas a coluna DS_COR_RACA
+    select(DS_COR_RACA) %>%
+    # Conta a frequência de cada grupo
+    count(DS_COR_RACA)
+
+# Faz o merge dos 3 dataframes pra colocar em um só
+cand_por_raca_al_sp_pr = merge(cand_por_raca_al, cand_por_raca_sp, all=TRUE, by="DS_COR_RACA")
+cand_por_raca_al_sp_pr = merge(cand_por_raca_al_sp_pr, cand_por_raca_pr, all=TRUE, by="DS_COR_RACA")
+
+# Altera o label de cada coluna para facilitar a leitura
+names(cand_por_raca_al_sp_pr) = c('DS_COR_RACA', 'AL', 'SP', 'PR')
+```
+
+O quantitativo de candaditos por estado e por raça pode ser obtido usando o dataframe 'cand' e filtrando os registros pro estado desejado. A partir disso, basta selecionar apenas a coluna DS_COR_RACA e aplicar a função count, que fará a contagem de cada tipo de DS_COR_RACA.
+
+Para facilitar a visualização em uma única tabela, foi criado um dataframe com o merge do resultado por estado. A tabela abaixo apresenta o quantitativo dos candidatos dos estados de Alagoas, São Paulo e Paraná por raça:
+
+```{r}
+kable(cand_por_raca_al_sp_pr)
+```
+
+> m. Qual é o quantitativo de candidatos por grau de instrução nos estados do Mato Grosso, Rondônia e Rio Grande do Sul?
+
+```{r}
+
+cand_por_grau_instrucao_mt = cand %>%
+    # Filtra Mata Grosso
+    filter(SG_UF == 'MS') %>%
+    # Seleciona apenas a variável grau de instrução
+    select(DS_GRAU_INSTRUCAO) %>%
+    # Conta cada grupo
+    count(DS_GRAU_INSTRUCAO)
+
+cand_por_grau_instrucao_ro = cand %>%
+    # Filtra Rondônia
+    filter(SG_UF == 'RO') %>%
+    # Seleciona apenas a variável grau de instrução
+    select(DS_GRAU_INSTRUCAO) %>%
+    # Conta cada grupo
+    count(DS_GRAU_INSTRUCAO)
+
+cand_por_grau_instrucao_rs = cand %>%
+    # Filtra Rio Grande do Sul
+    filter(SG_UF == 'RS') %>%
+    # Seleciona apenas a variável grau de instrução
+    select(DS_GRAU_INSTRUCAO) %>%
+    # Conta cada grupo
+    count(DS_GRAU_INSTRUCAO)
+
+# Faz o merge dos 3 dataframes em apenas um
+cand_por_grau_instrucao_mt_ro_rs = merge(cand_por_grau_instrucao_mt, cand_por_grau_instrucao_ro, all=TRUE, by="DS_GRAU_INSTRUCAO")
+cand_por_grau_instrucao_mt_ro_rs = merge(cand_por_grau_instrucao_mt_ro_rs, cand_por_grau_instrucao_rs, all=TRUE, by="DS_GRAU_INSTRUCAO")
+
+# Altera o label de cada coluna para facilitar a leitura
+names(cand_por_grau_instrucao_mt_ro_rs) = c('DS_GRAU_INSTRUCAO', 'MT', 'RO', 'RS')
+```
+
+O procedimento para obter o resultado aqui é semelhante ao do item anterior, mas selecionando a variável DS_GRAU_INSTRUCAO.
+
+A tabela abaixo apresenta o quantitativo dos candidatos dos estados de Mato Grosso, Rondônia e Rio Grande de Sul por grau de instrução:
+
+```{r}
+kable(cand_por_grau_instrucao_mt_ro_rs)
+```
+> n. Qual foi o percentual das despesas de campanha destinados às mulheres negras no estado de Minas Gerais em cada partido? Apresente os resultados em uma tabela e em um histograma.
+
+```{r}
+cand_mulheres_negras_por_partido_mg = cand %>%
+    # Filtra só o estado de MG
+    filter(SG_UF == 'MG') %>%
+    # Retira os registros com NA nos campos em que vamos trabalhar
+    filter(!is.na(DS_GENERO) & !is.na(DS_COR_RACA) & !is.na(VR_DESPESA_MAX_CAMPANHA) & !is.na(SG_PARTIDO)) %>%
+    # Converte a coluna VR_DESPESA_MAX_CAMPANHA para numérico
+    mutate(VR_DESPESA_MAX_CAMPANHA = as.numeric(VR_DESPESA_MAX_CAMPANHA)) %>%
+    # Seleciona os campos sigla, despesa, gênero e raça
+    select(SG_PARTIDO, VR_DESPESA_MAX_CAMPANHA, DS_GENERO, DS_COR_RACA) %>%
+    # Agrupa os dados por partido
+    group_by(SG_PARTIDO) %>%
+    # Cria uma coluna com o total gasto pelo partido
+    mutate(DESPESA_TOTAL_PARTIDO = sum(VR_DESPESA_MAX_CAMPANHA)) %>%
+    # Agora filtra apenas mulheres negras
+    filter(DS_GENERO == 'FEMININO' & DS_COR_RACA == 'PRETA') %>%
+    # Seleciona apenas os campos Partido, Despesa de mulheres negras e despesa total do partido
+    select(SG_PARTIDO, VR_DESPESA_MAX_CAMPANHA, DESPESA_TOTAL_PARTIDO) %>%
+    # Cria uma coluna com o total gasto pelo partido com mulheres negras
+    mutate(DESPESA_COM_MULHER_NEGRA = sum(VR_DESPESA_MAX_CAMPANHA)) %>%
+    # Cria uma coluna com o percentual gasto com mulheres negras pelo partido
+    mutate(PERCENTUAL = round(100*DESPESA_COM_MULHER_NEGRA/DESPESA_TOTAL_PARTIDO, 2)) %>%
+    # Seleciona apenas as colunas de partido e despesa
+    select(SG_PARTIDO, DESPESA_COM_MULHER_NEGRA, DESPESA_TOTAL_PARTIDO, PERCENTUAL) %>%
+    # Remove duplicatas (isso tira os dados individuais e deixa apenas o agregado)
+    distinct() %>%
+    # Ordena do maior para o menor para facilitar a visualização
+    arrange(desc(PERCENTUAL)) %>%
+    # Transforma os valores em milhões para facilitar a visualização
+    mutate(DESPESA_COM_MULHER_NEGRA = DESPESA_COM_MULHER_NEGRA/1e6) %>%
+    mutate(DESPESA_TOTAL_PARTIDO = DESPESA_TOTAL_PARTIDO/1e6)
+
+```
+
+Para obter essa informação podemos iniciar com o dataframe 'cand' e realizar a série de operações abaixo para obter o percentual das despesas de campanha destinados às mulheres negras no estado de Minas Gerais em cada partido:
+
+- filtra o dataframe por SG_UF == 'MG' para obter apenas registros referentes a MG
+- para responder a pergunta desse item é necessário trabalhar com as variáveis DS_GENERNO, DS_COR_RACA, VR_DESPESA_MAX_CAMPANHA e SG_PARTIDO. Entretanto, há registros faltantes (NA) para essas variáveis. Optei por remover  da base de dados esses registros
+- a coluna VR_DESPESA_MAX_CAMPANHA foi lida pelo comando read_csv2 como do tipo character. Por isso, converte para o tipo numeric
+- seleciona apenas os campos necessários para responder a questão: SG_PARTIDO, VR_DESPESA_MAX_CAMPANHA, DS_GENERO, DS_COR_RACA
+- agrupa por partido
+- cria uma coluna DESPESA_TOTAL_PARTIDO com a soma do VR_DEPESA_MAX_CAMPANHA. Essa coluna representa o valor total gasto pelo partido em MG, independente do gênero do candidato
+- filtra apenas as mulheres negras (DS_GENERO == 'FEMININO' & DS_COR_RACA == 'PRETA')
+- seleciona apenas as variáveis SG_PARTIDO, VR_DESPESA_MAX_CAMPANHA, DESPESA_TOTAL_PARTIDO.
+    - nota que aqui as observações referem-se apenas a mulheres negras em MG, não faz mais sentido continuar carregando as colunas DS_GENERO e DS_COR_RACA
+- cria uma nova coluna DESPESA_COM_MULHER_NEGRA como a soma de VR_DESPESA_MAX_CAMPANHA. Essa variáel representa então a soma do valor total gasto pelo partido em MG na campanha de candaditas negras
+- cria uma coluna PERCENTUAL que é igual a 100*DESPESA_COM_MULHER_NEGRA/DESPESA_TOTAL_PARTIDO e reprsenta o percentual total gasto na campanha de candidatas negras por partido em MG
+- não é mais necessário carregar a informação de VR_DESPESA_MAX_CAMPANHA, então basta selecionar os campos necessários para responder a questão: SG_PARTIDO, DESPESA_COM_MULHER_NEGRA, DESPESA_TOTAL_PARTIDO, PERCENTUAL
+- cada observação nesse ponto representa informações de candidatas negras em MG, mas as colunas representam estatísticas resumidas agrupadas. Há diversos registros duplicados, sendo necessário selecionar os registros únicos
+- para facilitar a visualização, podemos ordenar o dataframe por maior valor de percentual
+- ainda para facilitar a visualização, podemos também converter os valores gastos nas campanhas para milhões
+
+Feito isso, basta exibir a tabela e o histograma do valor total da despesa com candidatas negras em MG por partido:
+
+```{r}
+kable(cand_mulheres_negras_por_partido_mg, col.names=c('Partido', 'Despesa com canditadas negras (R$ milhões)', 'Despesas com todos os candidatos (R$ milhões)', 'Percentual (%)'))
+
+hist(cand_mulheres_negras_por_partido_mg$PERCENTUAL, breaks=20, xlab="Percentual (%)", ylab="Frequência", main="Percentual gasto pelos partidos na campanha de mulheres negras")
+```
+
+> o. Considerando o estado do Ceará, determine:
+> * a quantidade de candidatos;
+> * a média das idades;
+> * o desvio padrão das idades;
+> * a amplitude das idades;
+> * a amplitude interquartil das idades;
+> * o coeficiente de variação das idades;
+>  * o histograma das idades (use a função **hist()**, atribuindo o resultado a uma variável **h**).
+
+```{r}
+# idade CE
+cand_ce = cand %>%
+    # Filtra o estado do CE e os campos que não tem idade disponíveis (apenas 1)
+    filter(SG_UF == 'CE' & !is.na(NR_IDADE_DATA_POSSE)) %>%
+    # Seleciona o código do candidato e sua idade
+    select(SQ_CANDIDATO, NR_IDADE_DATA_POSSE) %>%
+    # Remove as duplicatas
+    distinct()
+media_idade_ce = mean(cand_ce$NR_IDADE_DATA_POSSE)
+
+# a quantidade de candidatos
+qtd_candidatos_ce = nrow(cand_ce)
+
+# a média das idades
+media_idade_ce = mean(cand_ce$NR_IDADE_DATA_POSSE)
+
+# o desvio padrão das idades
+desvio_padrao_idade_ce = sd(cand_ce$NR_IDADE_DATA_POSSE)
+
+# a amplitude das idades
+amplitude_idade_ce = max(cand_ce$NR_IDADE_DATA_POSSE) - min(cand_ce$NR_IDADE_DATA_POSSE)
+
+# a amplitude interquartil das idades
+amplitude_interquartil_ceara = IQR(cand_ce$NR_IDADE_DATA_POSSE)
+
+# o coeficiente de variação das idades
+coeficiente_variacao_ce = desvio_padrao_idade_ce/media_idade_ce
+
+# o histograma das idades
+h = hist(cand_ce$NR_IDADE_DATA_POSSE, xlab="Idade (anos)", ylab="Frequência", main="Idade dos candidatos no CE. Fechado à direita")
+
+h_fechado_esquerda = hist(cand_ce$NR_IDADE_DATA_POSSE, right=FALSE, xlab="Idade (anos)", ylab="Frequência", main="Idade dos candidatos no CE. Fechado à esquerda")
+```
+
+Com o dataframe 'cand' é possível criar um dataframe simplificado 'cand_ce' para responder essas dúvidas. Este segundo dataframe foi criado selecionando apenas as colunas SQ_CANDIDATO e NR_IDADE_DATA_POSSE, filtrando os NA nessas colunas e removendo as duplicadas (cada observação de 'cand' se refere a bens de candidatos, deixando apenas SQ_CANDIDATO e NR_IDADE_CANDIDATO traz muitas duplicadas). Com isso, basta aplicar funções do R na coluna NR_IDAE_DATA_POSSE para obter as respostas desejadas.
+
+Havia no estado do Ceará **`r qtd_candidatos_ce`** candidatos em 2016. A média da idade deles era de **`r media_idade_ce`** anos com desvio padrão de **`r desvio_padrao_idade_ce`** anos. Ainda em relação à idade dos candidatos, sua amplitude, amplitude interquartil e coeficiente de variação era de, respectivamente, **`r amplitude_idade_ce`** anos, **`r amplitude_interquartil_ceara`** anos e **`r coeficiente_variacao_ce`** (admensional).
+
+Note que foram plotados dois histogramas ligeiramente diferentes, ambos para idades dos candidatos do Ceará. O que diferencia eles é que o primeiro (h) é fechado à direita e o segundo (h_fechado_esquerda) é fechado à esquerda. Isso significa que o bin entre 20 e 25 anos representa, no primeiro caso, 20 < IDADE <= 25. No segundo caso o mesmo bin significa 20 <= IDADE < 25.
+
+Normalmente não seria necessário dois histogramas para uma análise exploratória dos dados. Entretanto o exercício seguinte pede explicitamente para fazer alguns cálculos de probabilidade usando os dados do histograma. Por isso é necessário tomar cuidado com os intervalos abertos/fechados.
+
+
+> p. A partir do histograma do item anterior (variável **h**), mostre o conteúdo dos objetos **breaks** e **counts**.
+
+
+O conteúdo dos objetos **breaks** e **counts** para o histograma com intervalos fechados à direita são dados por h\$breaks e h\$counts:
+
+```{r}
+h$breaks
+
+h$counts
+
+```
+
+O conteúdo dos objetos **breaks** e **counts** para o histograma com intervalos fechados à esquerda são dados por h_fechado_esquerda\$breaks e h_fechado_esquerda\$counts:
+
+```{r}
+h_fechado_esquerda$breaks
+
+h_fechado_esquerda$counts
+
+```
+
+> q. Utilize os objetos **breaks** e **counts** da variável **h** para determinar as seguintes probabilidades:
+> 
+> * de um candidato ter entre 20 e 50 anos;
+> * de um candidato ter menos de 40 anos;
+> * de um candidato ter mais de 60 anos.
+
+*Probabilidade de um candidato ter entre 20 e 50 anos*
+
+Não está claro o que significa "entre 20 e 50 anos". Em português podemos considerar isso como inclusivo (20 <= IDADE <= 50) ou exclusivo (20 < IDADE < 50). Coloquialmente quando dizemos que uma pessoa tem entre X_1 e X_2 anos, estamos dizendo que X_1 e X_2 estão incluídos na nossa estimativa. Por isso será considerado aqui que o enunciado deseja o cálculo incluindo as idades de 20 e 50 anos.
+
+O intervalo entre (20 <= IDADE < 50) pode ser calculado apenas com a variável **h_fechado_esquerda**. Entretanto é necessário calcular também o quantitativo referente especificamente a idade de 50 anos. Para isso, podemos calcular com base tanto em **h** quanto em **h_fechado_esquerda**:
+
+
+```{r}
+prob_exato_50_anos = sum(h$count[h$breaks < 50]) - sum(h_fechado_esquerda$count[h_fechado_esquerda$breaks < 50])
+
+prob_entre_20_50 = sum(h_fechado_esquerda$count[h_fechado_esquerda$breaks >= 20 & h_fechado_esquerda$breaks < 50]) + prob_exato_50_anos
+
+prob_entre_20_50 = 100*prob_entre_20_50/sum(h$count)
+
+```
+
+Assim, a probabilidade de um candidato no Ceará ter idade entre 20 e 50 anos (incluindo as idades de 20 e de 50 anos) é de **`r prob_entre_20_50` %**.
+
+
+*Probabilidade de um candidato ter menos de 40 anos*
+
+Ter menos de 40 anos significa considerar todas as idades < 40 (ou seja, não inclui 40). Podemos fazer isso através do histograma fechado à esquerda (variável **h_fechado_esquerda**):
+
+```{r}
+# de um candidato ter menos de 40 anos
+prob_menor_40 = 100*sum(h_fechado_esquerda$count[h_fechado_esquerda$breaks < 40]) / sum(h_fechado_esquerda$count)
+```
+
+A probabilidade de um candidato no Ceará ter menos do que 40 anos (< 40 anos) é de **`r prob_menor_40`%**.
+
+*Probabilidade de um candidato ter mais de 60 anos.*
+
+Ter mais de 60 anos significa considerar todas as idades > 60 (ou seja, não inclui 60).
+Para o cálculo dessa probabilidade será necessário considerar o histograma fechado à esquerda a partir de 60 (variável **h_fechado_esquerda**) e, assim como foi feito no primeiro item desse exercício, remover o item referente exatamente a idade de 60 anos (e para isso é necessário usar tanto a variável **h** quanto a **h_fechado_esquerda**:
+
+```{r}
+# de um candidato ter mais de 60 anos
+
+prob_exato_60_anos = sum(h$count[h$breaks < 60]) - sum(h_fechado_esquerda$count[h_fechado_esquerda$breaks < 60])
+
+prob_maior_60 = sum(h_fechado_esquerda$count[h_fechado_esquerda$breaks >= 60], na.rm=TRUE) - prob_exato_60_anos
+
+prob_maior_60 = 100*prob_maior_60/sum(h_fechado_esquerda$count)
+```
+
+Assim, a probabilidade de um candidato no Ceará ter mais do que 60 anos (> 60 anos) é de **`r prob_maior_60`%**.
+
+
+> r. Utilize a função **dnormal** para verificar as probabilidades do item anterior.
+
+As respostas são exibidas no gráfico. Para 20 e 50 anos é a área hachurada. Para menos de 40 anos, é a área branca. Para mais de 60 anos, é a área hachurada. Para facilitar a visualização, o console mostra o resultado calculado com a função pnorm.
+
+Note que o enunciado solicita o uso da função dnormal criada pelo professor, que apresenta uma distribuição normal dado os parâmetros de média e desvio padrão e, com isso, calcula a probabilidade (área sobre a curva) entre dois pontos. Com isso os valores apresentados nessa seção já vão naturalmente possuir uma leve discrepância com os dados da população de candidatos (que obviamente não segue 100% uma distribuição normal). Além disso, essa diferença pode ainda ser maior pela forma como foram tratados os intervalos abertos e fechados na questão anterior.
+
+```{r}
+source("Normal.R")
+
+# de um candidato ter entre 20 e 50 anos
+dnormal(media=media_idade_ce, dp=desvio_padrao_idade_ce, x1=20, x2=50)
+pnorm(50, media_idade_ce, desvio_padrao_idade_ce) - pnorm(20, media_idade_ce, desvio_padrao_idade_ce)
+
+# de um candidato ter menos de 40 anos
+dnormal(media=media_idade_ce, dp=desvio_padrao_idade_ce, x1=40, x2=NULL)
+pnorm(40, media_idade_ce, desvio_padrao_idade_ce)
+
+# de um candidato ter mais de 60 anos
+dnormal(media=media_idade_ce, dp=desvio_padrao_idade_ce, x1=60, x2=NULL)
+1 - pnorm(60, media_idade_ce, desvio_padrao_idade_ce)
+
+```
